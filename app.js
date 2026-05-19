@@ -15,13 +15,16 @@ async function getSession() {
   } catch { return null; }
 }
 
-async function loadProfile(userId) {
-  // Try both possible storage keys
-  const storageKey = `sb-${SB_URL.split('//')[1].split('.')[0]}-auth-token`;
+async function getToken() {
+  const storageKey = `sb-${SB_URL.replace('https://','').split('.')[0]}-auth-token`;
   const stored = localStorage.getItem(storageKey);
-  const token = stored ? JSON.parse(stored)?.access_token : null;
+  return stored ? JSON.parse(stored)?.access_token : null;
+}
+
+async function loadProfile(userId) {
+  const token = await getToken();
   const r = await fetch(`${SB_URL}/rest/v1/user_profiles?id=eq.${userId}&select=*,schools(name)`, {
-    headers: { 'apikey': SB_KEY, 'Authorization': `Bearer ${token||SB_KEY}` }
+    headers: { 'apikey': SB_KEY, 'Authorization': `Bearer ${token}` }
   });
   const data = await r.json();
   return data?.[0] || null;
@@ -34,7 +37,7 @@ async function logout() {
 
 // ===== FETCH HELPER =====
 async function dbFetch(table, query = '') {
-  const token = JSON.parse(localStorage.getItem('sb-uygjcopyohzslvrzvrmv-auth-token'))?.access_token;
+  const token = await getToken();
   const r = await fetch(`${SB_URL}/rest/v1/${table}?${query}`, {
     headers: { 'apikey': SB_KEY, 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' }
   });
@@ -42,7 +45,7 @@ async function dbFetch(table, query = '') {
 }
 
 async function dbInsert(table, data) {
-  const token = JSON.parse(localStorage.getItem('sb-uygjcopyohzslvrzvrmv-auth-token'))?.access_token;
+  const token = await getToken();
   const r = await fetch(`${SB_URL}/rest/v1/${table}`, {
     method: 'POST',
     headers: { 'apikey': SB_KEY, 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json', 'Prefer': 'return=representation' },
@@ -52,7 +55,7 @@ async function dbInsert(table, data) {
 }
 
 async function dbUpdate(table, id, data) {
-  const token = JSON.parse(localStorage.getItem('sb-uygjcopyohzslvrzvrmv-auth-token'))?.access_token;
+  const token = await getToken();
   const r = await fetch(`${SB_URL}/rest/v1/${table}?id=eq.${id}`, {
     method: 'PATCH',
     headers: { 'apikey': SB_KEY, 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json', 'Prefer': 'return=representation' },
@@ -62,7 +65,7 @@ async function dbUpdate(table, id, data) {
 }
 
 async function dbDelete(table, id) {
-  const token = JSON.parse(localStorage.getItem('sb-uygjcopyohzslvrzvrmv-auth-token'))?.access_token;
+  const token = await getToken();
   await fetch(`${SB_URL}/rest/v1/${table}?id=eq.${id}`, {
     method: 'DELETE',
     headers: { 'apikey': SB_KEY, 'Authorization': `Bearer ${token}` }
