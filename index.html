@@ -16,7 +16,7 @@
     <div class="auth-sub">Elektronski dnevnik za škole</div>
 
     <div class="form-group">
-      <label>Korisničko ime ili email</label>
+      <label>Korisničko ime</label>
       <input type="text" id="loginUser" placeholder="ime.prezime" autocomplete="username"/>
     </div>
     <div class="form-group">
@@ -45,32 +45,36 @@ async function doLogin() {
   }
 
   // Check if input is username or email
-  let email = userInput;
   if (!userInput.includes('@')) {
-    // It's a username — look up the email
-    const data = await dbFetch('usernames', `username=eq.${userInput}&select=user_id`);
-    if (!data.length) {
+    // It's a username — look up user_id then get email from auth
+    const unData = await dbFetch('usernames', `username=eq.${userInput}&select=user_id`);
+    if (!unData.length) {
       msg.textContent = 'Korisničko ime ne postoji.';
       msg.className = 'auth-msg err';
       return;
     }
-    // Get email from auth via profile
-    const profile = await dbFetch('user_profiles', `id=eq.${data[0].user_id}&select=id`);
-    if (!profile.length) {
-      msg.textContent = 'Greška pri prijavljivanju.';
+    // Store user_id and try to sign in — but we need email
+    // Use a workaround: store email in usernames table or use magic approach
+    // For now sign in with a fake email format: username@dnevnik.internal
+    // Actually best approach: try signInWithPassword with userId as email won't work
+    // We need to store email in usernames table
+    // Temporary: ask user to use email
+    msg.textContent = 'Korisničko ime pronađeno! Pokušavam prijavu...';
+    // Try to find email via RPC or stored email
+    const unEmail = await dbFetch('usernames', `username=eq.${userInput}&select=user_id,email`);
+    if (!unEmail[0]?.email) {
+      msg.textContent = 'Korisnik nema email. Prijavite se emailom: a@a.com';
       msg.className = 'auth-msg err';
       return;
     }
-    // We need the email — stored in usernames extended or we try signIn with username directly
-    // For now, try with username as email fallback
-    const { data: authData, error } = await sb.auth.signInWithPassword({ email: userInput, password: pass });
+    const { error } = await sb.auth.signInWithPassword({ email: unEmail[0].email, password: pass });
     if (error) {
-      msg.textContent = 'Pogrešno korisničko ime ili lozinka.';
+      msg.textContent = 'Pogrešna lozinka.';
       msg.className = 'auth-msg err';
       return;
     }
   } else {
-    const { error } = await sb.auth.signInWithPassword({ email, password: pass });
+    const { error } = await sb.auth.signInWithPassword({ email: userInput, password: pass });
     if (error) {
       msg.textContent = 'Pogrešan email ili lozinka.';
       msg.className = 'auth-msg err';
