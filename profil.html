@@ -1,0 +1,235 @@
+<!DOCTYPE html>
+<html lang="sr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>eDnevnik — Moj profil</title>
+<link rel="stylesheet" href="style.css">
+<style>
+.profile-header {
+  background: linear-gradient(135deg, #1e3a8a, #2563eb);
+  border-radius: 16px;
+  padding: 32px;
+  color: #fff;
+  display: flex;
+  align-items: center;
+  gap: 24px;
+  margin-bottom: 24px;
+  flex-wrap: wrap;
+}
+.avatar-wrap { position: relative; }
+.avatar-big {
+  width: 90px; height: 90px;
+  border-radius: 50%;
+  background: rgba(255,255,255,.2);
+  border: 3px solid rgba(255,255,255,.4);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 2rem; font-weight: 700;
+  overflow: hidden;
+  cursor: pointer;
+}
+.avatar-big img { width: 100%; height: 100%; object-fit: cover; }
+.avatar-edit {
+  position: absolute; bottom: 0; right: 0;
+  width: 26px; height: 26px;
+  background: var(--accent);
+  border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  font-size: .7rem; cursor: pointer;
+  border: 2px solid #fff;
+}
+.profile-info h2 { font-size: 1.4rem; font-weight: 800; }
+.profile-info p { opacity: .75; font-size: .85rem; margin-top: 4px; }
+.profile-username { background: rgba(255,255,255,.15); border-radius: 6px; padding: 3px 10px; font-size: .8rem; display: inline-block; margin-top: 6px; font-family: 'DM Mono', monospace; }
+.success-msg { background: #dcfce7; color: #16a34a; border-radius: 8px; padding: 10px 14px; font-size: .82rem; margin-bottom: 12px; display: none; }
+.error-msg { background: #fee2e2; color: #dc2626; border-radius: 8px; padding: 10px 14px; font-size: .82rem; margin-bottom: 12px; display: none; }
+</style>
+</head>
+<body>
+<div class="app-wrap" id="app" style="display:none">
+  <div class="sidebar">
+    <div class="sidebar-logo">
+      <div class="sidebar-logo-icon">📚</div>
+      <span>eDnevnik</span>
+    </div>
+    <nav class="sidebar-nav">
+      <div class="nav-section">
+        <div class="nav-item" onclick="goBack()"><span class="ni">←</span> Nazad</div>
+      </div>
+    </nav>
+    <div class="sidebar-bottom">
+      <div class="user-chip">
+        <div class="user-avatar" id="userAvatar">?</div>
+        <div class="user-info">
+          <div class="user-name" id="userName">—</div>
+          <div class="user-role" id="userRole">—</div>
+        </div>
+        <button class="btn-logout-small" onclick="logout()">↩</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="main">
+    <div class="topbar">
+      <div class="topbar-title">Moj profil</div>
+    </div>
+    <div class="content">
+      <div class="profile-header">
+        <div class="avatar-wrap">
+          <div class="avatar-big" id="avatarBig" onclick="document.getElementById('avatarInput').click()">
+            <span id="avatarInitial">?</span>
+          </div>
+          <div class="avatar-edit" onclick="document.getElementById('avatarInput').click()">📷</div>
+          <input type="file" id="avatarInput" accept="image/*" style="display:none" onchange="uploadAvatar(this)">
+        </div>
+        <div class="profile-info">
+          <h2 id="phName">—</h2>
+          <p id="phRole">—</p>
+          <div class="profile-username" id="phUsername">—</div>
+        </div>
+      </div>
+
+      <!-- LIČNI PODACI -->
+      <div class="card">
+        <div class="card-header"><h2>👤 Lični podaci</h2></div>
+        <div class="card-body">
+          <div id="profileSuccess" class="success-msg">✅ Podaci su sačuvani!</div>
+          <div id="profileError" class="error-msg"></div>
+          <div class="form-row">
+            <div class="form-group"><label>Ime *</label><input type="text" id="pFirst"/></div>
+            <div class="form-group"><label>Prezime *</label><input type="text" id="pLast"/></div>
+          </div>
+          <div class="form-row">
+            <div class="form-group"><label>Email</label><input type="email" id="pEmail" placeholder="vas@email.rs"/></div>
+            <div class="form-group"><label>Telefon</label><input type="text" id="pPhone" placeholder="06x/xxx-xxx"/></div>
+          </div>
+          <div style="margin-top:8px">
+            <button class="btn btn-blue" onclick="saveProfile()">Sačuvaj podatke</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- PROMENA LOZINKE -->
+      <div class="card">
+        <div class="card-header"><h2>🔑 Promena lozinke</h2></div>
+        <div class="card-body">
+          <div id="passSuccess" class="success-msg">✅ Lozinka je promenjena!</div>
+          <div id="passError" class="error-msg"></div>
+          <div class="form-group"><label>Nova lozinka *</label><input type="password" id="pPass1" placeholder="Min. 6 karaktera"/></div>
+          <div class="form-group"><label>Potvrdi novu lozinku *</label><input type="password" id="pPass2" placeholder="Ponovi lozinku"/></div>
+          <button class="btn btn-blue" onclick="changePass()">Promeni lozinku</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.26.0/dist/umd/supabase.min.js"></script>
+<script src="app.js"></script>
+<script>
+let profile = null;
+let username = '';
+
+const ROLE_ROUTES = { admin: 'admin.html', nastavnik: 'nastavnik.html', strucna_sluzba: 'strucna.html', staresina: 'staresina.html', ucenik: 'ucenik.html', roditelj: 'roditelj.html' };
+
+function goBack() {
+  window.location.href = ROLE_ROUTES[profile?.role] || 'index.html';
+}
+
+document.addEventListener('DOMContentLoaded', async () => {
+  const user = await getSession();
+  if (!user) { window.location.href = 'index.html'; return; }
+  currentUser = user;
+  profile = await loadProfile(user.id);
+  if (!profile) { window.location.href = 'index.html'; return; }
+
+  document.getElementById('app').style.display = 'flex';
+
+  // Load username
+  const unData = await dbFetch('usernames', `user_id=eq.${user.id}&select=username`);
+  username = unData?.[0]?.username || '';
+
+  renderProfile();
+});
+
+function renderProfile() {
+  const name = `${profile.first_name||''} ${profile.last_name||''}`.trim();
+  const initial = (profile.first_name?.[0]||'?').toUpperCase();
+
+  document.getElementById('phName').textContent = name || '—';
+  document.getElementById('phRole').textContent = ROLE_LABELS[profile.role] || profile.role;
+  document.getElementById('phUsername').textContent = username || '—';
+  document.getElementById('userName').textContent = name || '—';
+  document.getElementById('userRole').textContent = ROLE_LABELS[profile.role] || '—';
+  document.getElementById('userAvatar').textContent = initial;
+
+  // Avatar
+  const ab = document.getElementById('avatarBig');
+  if (profile.avatar_url) {
+    ab.innerHTML = `<img src="${profile.avatar_url}" alt="avatar">`;
+  } else {
+    document.getElementById('avatarInitial').textContent = initial;
+  }
+
+  document.getElementById('pFirst').value = profile.first_name || '';
+  document.getElementById('pLast').value = profile.last_name || '';
+  document.getElementById('pEmail').value = profile.email || '';
+  document.getElementById('pPhone').value = profile.phone || '';
+}
+
+async function saveProfile() {
+  const first = document.getElementById('pFirst').value.trim();
+  const last = document.getElementById('pLast').value.trim();
+  const email = document.getElementById('pEmail').value.trim() || null;
+  const phone = document.getElementById('pPhone').value.trim() || null;
+
+  if (!first || !last) { showMsg('profileError', 'Ime i prezime su obavezni!'); return; }
+
+  await dbUpdate('user_profiles', currentUser.id, { first_name: first, last_name: last, email, phone });
+  profile.first_name = first; profile.last_name = last; profile.email = email; profile.phone = phone;
+  renderProfile();
+  showMsg('profileSuccess');
+}
+
+async function changePass() {
+  const p1 = document.getElementById('pPass1').value;
+  const p2 = document.getElementById('pPass2').value;
+  if (p1.length < 6) { showMsg('passError', 'Lozinka mora imati min. 6 karaktera!'); return; }
+  if (p1 !== p2) { showMsg('passError', 'Lozinke se ne poklapaju!'); return; }
+  const { error } = await sb.auth.updateUser({ password: p1 });
+  if (error) { showMsg('passError', 'Greška: ' + error.message); return; }
+  document.getElementById('pPass1').value = '';
+  document.getElementById('pPass2').value = '';
+  showMsg('passSuccess');
+}
+
+async function uploadAvatar(input) {
+  const file = input.files[0];
+  if (!file) return;
+  if (file.size > 2 * 1024 * 1024) { alert('Slika ne sme biti veća od 2MB!'); return; }
+
+  // Convert to base64 data URL (simple approach without storage)
+  const reader = new FileReader();
+  reader.onload = async (e) => {
+    const dataUrl = e.target.result;
+    await dbUpdate('user_profiles', currentUser.id, { avatar_url: dataUrl });
+    profile.avatar_url = dataUrl;
+    document.getElementById('avatarBig').innerHTML = `<img src="${dataUrl}" alt="avatar">`;
+  };
+  reader.readAsDataURL(file);
+}
+
+function showMsg(id, text) {
+  ['profileSuccess','profileError','passSuccess','passError'].forEach(x => {
+    const el = document.getElementById(x);
+    if (el) el.style.display = 'none';
+  });
+  const el = document.getElementById(id);
+  if (!el) return;
+  if (text) el.textContent = text;
+  el.style.display = 'block';
+  setTimeout(() => el.style.display = 'none', 3000);
+}
+</script>
+</body>
+</html>
