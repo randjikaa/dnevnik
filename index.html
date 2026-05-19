@@ -68,8 +68,10 @@ async function doLogin() {
 
   // Load profile to determine role
   const user = await getSession();
+  console.log('user:', user);
   if (!user) { msg.textContent = 'Greška.'; msg.className = 'auth-msg err'; return; }
   const profile = await loadProfile(user.id);
+  console.log('profile:', profile);
 
   if (!profile) {
     msg.textContent = 'Nalog nije podešen. Kontaktirajte administratora.';
