@@ -92,9 +92,10 @@ async function doLogin() {
 }
 
 document.addEventListener('DOMContentLoaded', async () => {
-  // If already logged in, redirect
+  // Check if already logged in — only redirect if explicitly came from another page
+  const ref = document.referrer;
   const user = await getSession();
-  if (user) {
+  if (user && ref && !ref.includes('index.html')) {
     const profile = await loadProfile(user.id);
     if (profile) {
       const routes = { admin: 'admin.html', nastavnik: 'nastavnik.html', strucna_sluzba: 'strucna.html', staresina: 'staresina.html', ucenik: 'ucenik.html', roditelj: 'roditelj.html' };
