@@ -1,0 +1,705 @@
+<!DOCTYPE html>
+<html lang="sr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>eDnevnik — Admin panel</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<div class="app-wrap" id="app" style="display:none">
+
+  <!-- SIDEBAR -->
+  <div class="sidebar">
+    <div class="sidebar-logo">
+      <div class="sidebar-logo-icon">📚</div>
+      <span>eDnevnik</span>
+    </div>
+    <div class="sidebar-school" id="sbSchool">— Izaberi školu —</div>
+    <nav class="sidebar-nav">
+      <div class="nav-section">
+        <div class="nav-section-title">Glavni</div>
+        <div class="nav-item active" onclick="showPage('dashboard')" data-page="dashboard"><span class="ni">🏠</span> Početna</div>
+        <div class="nav-item" onclick="showPage('schools')" data-page="schools"><span class="ni">🏫</span> Škole</div>
+        <div class="nav-item" onclick="showPage('users')" data-page="users"><span class="ni">👥</span> Korisnici</div>
+      </div>
+      <div class="nav-section">
+        <div class="nav-section-title">Škola</div>
+        <div class="nav-item" onclick="showPage('years')" data-page="years"><span class="ni">📅</span> Školske godine</div>
+        <div class="nav-item" onclick="showPage('classes')" data-page="classes"><span class="ni">🎓</span> Odeljenja</div>
+        <div class="nav-item" onclick="showPage('subjects')" data-page="subjects"><span class="ni">📖</span> Predmeti</div>
+        <div class="nav-item" onclick="showPage('assignments')" data-page="assignments"><span class="ni">👨‍🏫</span> Dodela nastavnika</div>
+      </div>
+    </nav>
+    <div class="sidebar-bottom">
+      <div class="user-chip">
+        <div class="user-avatar" id="userAvatar">A</div>
+        <div class="user-info">
+          <div class="user-name" id="userName">—</div>
+          <div class="user-role">Administrator</div>
+        </div>
+        <button class="btn-logout-small" onclick="logout()" title="Odjavi se">↩</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- MAIN -->
+  <div class="main">
+    <div class="topbar">
+      <div class="topbar-title" id="pageTitle">Početna</div>
+      <div class="topbar-right">
+        <select class="topbar-select" id="schoolSel" onchange="changeSchool()">
+          <option value="">— Izaberi školu —</option>
+        </select>
+        <select class="topbar-select" id="yearSel" onchange="changeYear()">
+          <option value="">— Izaberi godinu —</option>
+        </select>
+      </div>
+    </div>
+    <div class="content" id="pageContent">
+      <div class="loading">Učitavam...</div>
+    </div>
+  </div>
+</div>
+
+<!-- MODALS -->
+
+<!-- SCHOOL MODAL -->
+<div class="mo" id="schoolMo" style="display:none" onclick="if(event.target===this)closeMo('schoolMo')">
+  <div class="modal">
+    <h3 id="schoolMoT">Dodaj školu</h3>
+    <div class="form-group"><label>Naziv škole *</label><input type="text" id="schName" placeholder="OŠ Vuk Stefanović Karadžić"/></div>
+    <div class="form-row">
+      <div class="form-group"><label>Grad</label><input type="text" id="schCity" placeholder="Beograd"/></div>
+      <div class="form-group"><label>Telefon</label><input type="text" id="schPhone" placeholder="011/123-456"/></div>
+    </div>
+    <div class="form-group"><label>Adresa</label><input type="text" id="schAddr" placeholder="Ulica bb"/></div>
+    <div class="form-group"><label>Email</label><input type="email" id="schEmail" placeholder="skola@edu.rs"/></div>
+    <div class="modal-footer">
+      <button class="btn btn-outline" onclick="closeMo('schoolMo')">Otkaži</button>
+      <button class="btn btn-blue" onclick="saveSchool()">Sačuvaj</button>
+    </div>
+  </div>
+</div>
+
+<!-- USER MODAL -->
+<div class="mo" id="userMo" style="display:none" onclick="if(event.target===this)closeMo('userMo')">
+  <div class="modal">
+    <h3 id="userMoT">Dodaj korisnika</h3>
+    <div class="form-row">
+      <div class="form-group"><label>Ime *</label><input type="text" id="uFirst" placeholder="Petar" oninput="previewUsername()"/></div>
+      <div class="form-group"><label>Prezime *</label><input type="text" id="uLast" placeholder="Petrović" oninput="previewUsername()"/></div>
+    </div>
+    <div class="form-group">
+      <label>Korisničko ime (automatski)</label>
+      <input type="text" id="uUsername" readonly style="opacity:.6;background:#f9fafb"/>
+    </div>
+    <div class="form-group"><label>Email *</label><input type="email" id="uEmail" placeholder="petar.petrovic@skola.rs"/></div>
+    <div class="form-group"><label>Lozinka *</label><input type="password" id="uPass" placeholder="Min. 6 karaktera"/></div>
+    <div class="form-row">
+      <div class="form-group"><label>Uloga *</label>
+        <select id="uRole">
+          <option value="nastavnik">Nastavnik</option>
+          <option value="staresina">Razredni starešina</option>
+          <option value="strucna_sluzba">Stručna služba</option>
+          <option value="admin">Administrator</option>
+          <option value="ucenik">Učenik</option>
+          <option value="roditelj">Roditelj</option>
+        </select>
+      </div>
+      <div class="form-group"><label>Telefon</label><input type="text" id="uPhone" placeholder="06x/xxx-xxx"/></div>
+    </div>
+    <div id="userMoMsg" style="font-size:.8rem;color:var(--danger);margin-top:4px"></div>
+    <div class="modal-footer">
+      <button class="btn btn-outline" onclick="closeMo('userMo')">Otkaži</button>
+      <button class="btn btn-blue" onclick="saveUser()">Sačuvaj</button>
+    </div>
+  </div>
+</div>
+
+<!-- YEAR MODAL -->
+<div class="mo" id="yearMo" style="display:none" onclick="if(event.target===this)closeMo('yearMo')">
+  <div class="modal">
+    <h3>Dodaj školsku godinu</h3>
+    <div class="form-group"><label>Naziv (npr. 2025/2026) *</label><input type="text" id="yrName" placeholder="2025/2026"/></div>
+    <div class="form-row">
+      <div class="form-group"><label>Početak *</label><input type="date" id="yrStart"/></div>
+      <div class="form-group"><label>Kraj *</label><input type="date" id="yrEnd"/></div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-outline" onclick="closeMo('yearMo')">Otkaži</button>
+      <button class="btn btn-blue" onclick="saveYear()">Sačuvaj</button>
+    </div>
+  </div>
+</div>
+
+<!-- CLASS MODAL -->
+<div class="mo" id="classMo" style="display:none" onclick="if(event.target===this)closeMo('classMo')">
+  <div class="modal">
+    <h3>Dodaj odeljenje</h3>
+    <div class="form-row">
+      <div class="form-group"><label>Naziv *</label><input type="text" id="clName" placeholder="VII-2"/></div>
+      <div class="form-group"><label>Razred *</label>
+        <select id="clGrade">
+          ${[1,2,3,4,5,6,7,8].map(i=>`<option value="${i}">${i}. razred</option>`).join('')}
+        </select>
+      </div>
+    </div>
+    <div class="form-group"><label>Razredni starešina</label>
+      <select id="clStaresina"><option value="">— Izaberi —</option></select>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-outline" onclick="closeMo('classMo')">Otkaži</button>
+      <button class="btn btn-blue" onclick="saveClass()">Sačuvaj</button>
+    </div>
+  </div>
+</div>
+
+<!-- SUBJECT MODAL -->
+<div class="mo" id="subjectMo" style="display:none" onclick="if(event.target===this)closeMo('subjectMo')">
+  <div class="modal">
+    <h3>Dodaj predmet</h3>
+    <div class="form-group"><label>Naziv predmeta *</label><input type="text" id="sjName" placeholder="Matematika"/></div>
+    <div class="form-group"><label>Vrsta *</label>
+      <select id="sjType">
+        <option value="obavezan">Obavezan</option>
+        <option value="obavezan_izborni">Obavezno izborni</option>
+        <option value="izborni">Izborni</option>
+        <option value="dopunski">Dopunski rad</option>
+        <option value="dodatni">Dodatni rad</option>
+        <option value="pripremni">Pripremni rad</option>
+        <option value="sekcija">Sekcija</option>
+        <option value="teorija">Teorija</option>
+        <option value="praksa">Praksa</option>
+        <option value="blok">Blok nastava</option>
+        <option value="slobodna">Slobodna aktivnost</option>
+      </select>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-outline" onclick="closeMo('subjectMo')">Otkaži</button>
+      <button class="btn btn-blue" onclick="saveSubject()">Sačuvaj</button>
+    </div>
+  </div>
+</div>
+
+<!-- ASSIGNMENT MODAL -->
+<div class="mo" id="assignMo" style="display:none" onclick="if(event.target===this)closeMo('assignMo')">
+  <div class="modal">
+    <h3>Dodeli nastavnika predmetu</h3>
+    <div class="form-group"><label>Odeljenje *</label>
+      <select id="asClass"><option value="">— Izaberi —</option></select>
+    </div>
+    <div class="form-group"><label>Predmet *</label>
+      <select id="asSubject"><option value="">— Izaberi —</option></select>
+    </div>
+    <div class="form-group"><label>Nastavnik *</label>
+      <select id="asTeacher"><option value="">— Izaberi —</option></select>
+    </div>
+    <div class="form-row">
+      <div class="form-group"><label>Od datuma *</label><input type="date" id="asFrom"/></div>
+      <div class="form-group"><label>Do datuma *</label><input type="date" id="asTo"/></div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-outline" onclick="closeMo('assignMo')">Otkaži</button>
+      <button class="btn btn-blue" onclick="saveAssignment()">Sačuvaj</button>
+    </div>
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.26.0/dist/umd/supabase.min.js"></script>
+<script src="app.js"></script>
+<script>
+let currentSchoolId = null;
+let currentYearId = null;
+let schools = [], users = [], years = [], classes = [], subjects = [], assignments = [];
+let editSchoolId = null, editUserId = null;
+
+// ===== INIT =====
+document.addEventListener('DOMContentLoaded', async () => {
+  const user = await getSession();
+  if (!user) { window.location.href = 'index.html'; return; }
+  currentUser = user;
+  currentProfile = await loadProfile(user.id);
+  if (!currentProfile || currentProfile.role !== 'admin') {
+    window.location.href = 'index.html'; return;
+  }
+  document.getElementById('app').style.display = 'flex';
+  document.getElementById('userName').textContent = `${currentProfile.first_name || ''} ${currentProfile.last_name || ''}`.trim() || user.email;
+  document.getElementById('userAvatar').textContent = (currentProfile.first_name?.[0] || 'A').toUpperCase();
+  await loadAllData();
+  showPage('dashboard');
+});
+
+async function loadAllData() {
+  schools = await dbFetch('schools', 'select=*&order=name');
+  users = await dbFetch('user_profiles', 'select=*,schools(name)&order=last_name');
+  renderSchoolSelector();
+}
+
+function renderSchoolSelector() {
+  const sel = document.getElementById('schoolSel');
+  sel.innerHTML = '<option value="">— Izaberi školu —</option>' +
+    schools.map(s => `<option value="${s.id}"${s.id === currentSchoolId ? ' selected' : ''}>${esc(s.name)}</option>`).join('');
+}
+
+async function changeSchool() {
+  currentSchoolId = document.getElementById('schoolSel').value || null;
+  document.getElementById('sbSchool').textContent = schools.find(s => s.id === currentSchoolId)?.name || '— Izaberi školu —';
+  if (currentSchoolId) {
+    years = await dbFetch('school_years2', `select=*&school_id=eq.${currentSchoolId}&order=start_date.desc`);
+    classes = await dbFetch('classes', `select=*,user_profiles(first_name,last_name)&school_id=eq.${currentSchoolId}&order=grade`);
+    subjects = await dbFetch('school_subjects', `select=*&school_id=eq.${currentSchoolId}&order=name`);
+    assignments = await dbFetch('subject_assignments', `select=*,classes(name),school_subjects(name),user_profiles(first_name,last_name)&class_id=in.(${classes.map(c=>c.id).join(',') || 'null'})`);
+    const yrSel = document.getElementById('yearSel');
+    yrSel.innerHTML = '<option value="">— Izaberi godinu —</option>' +
+      years.map(y => `<option value="${y.id}"${y.is_active ? ' selected' : ''}>${esc(y.name)}</option>`).join('');
+    if (years.find(y => y.is_active)) {
+      currentYearId = years.find(y => y.is_active).id;
+      document.getElementById('yearSel').value = currentYearId;
+    }
+  }
+  const page = document.querySelector('.nav-item.active')?.dataset.page || 'dashboard';
+  showPage(page);
+}
+
+function changeYear() {
+  currentYearId = document.getElementById('yearSel').value || null;
+}
+
+// ===== NAVIGATION =====
+function showPage(name) {
+  document.querySelectorAll('.nav-item').forEach(el => el.classList.toggle('active', el.dataset.page === name));
+  const titles = { dashboard: 'Početna', schools: 'Škole', users: 'Korisnici', years: 'Školske godine', classes: 'Odeljenja', subjects: 'Predmeti', assignments: 'Dodela nastavnika' };
+  document.getElementById('pageTitle').textContent = titles[name] || name;
+  const pages = { dashboard, schools: schoolsPage, users: usersPage, years: yearsPage, classes: classesPage, subjects: subjectsPage, assignments: assignmentsPage };
+  if (pages[name]) pages[name]();
+}
+
+// ===== DASHBOARD =====
+function dashboard() {
+  document.getElementById('pageContent').innerHTML = `
+    <div class="page-title">Dobrodošli! 👋</div>
+    <div class="page-sub">Pregled sistema</div>
+    <div class="stats-grid">
+      <div class="stat-card blue">
+        <div class="stat-num">${schools.length}</div>
+        <div class="stat-lbl">Škola</div>
+      </div>
+      <div class="stat-card purple">
+        <div class="stat-num">${users.filter(u=>u.role==='nastavnik'||u.role==='staresina').length}</div>
+        <div class="stat-lbl">Nastavnika</div>
+      </div>
+      <div class="stat-card green">
+        <div class="stat-num">${users.filter(u=>u.role==='ucenik').length}</div>
+        <div class="stat-lbl">Učenika</div>
+      </div>
+      <div class="stat-card orange">
+        <div class="stat-num">${classes.length}</div>
+        <div class="stat-lbl">Odeljenja</div>
+      </div>
+    </div>
+    ${!currentSchoolId ? '<div class="card"><div class="card-body"><div class="empty">Izaberi školu iz padajućeg menija gore desno da vidiš detalje.</div></div></div>' : ''}
+  `;
+}
+
+// ===== SCHOOLS =====
+function schoolsPage() {
+  document.getElementById('pageContent').innerHTML = `
+    <div class="page-title">Škole</div>
+    <div class="page-sub">Upravljanje školama u sistemu</div>
+    <div class="card">
+      <div class="card-header">
+        <h2>🏫 Lista škola</h2>
+        <button class="btn btn-blue btn-sm" onclick="openSchoolModal()">+ Dodaj školu</button>
+      </div>
+      <div class="card-body" style="padding:0">
+        ${!schools.length ? '<div class="empty">Nema škola. Dodaj prvu!</div>' : `
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>Naziv</th><th>Grad</th><th>Email</th><th>Telefon</th><th></th></tr></thead>
+            <tbody>
+              ${schools.map(s => `<tr>
+                <td><strong>${esc(s.name)}</strong></td>
+                <td>${esc(s.city || '—')}</td>
+                <td>${esc(s.email || '—')}</td>
+                <td>${esc(s.phone || '—')}</td>
+                <td style="display:flex;gap:6px">
+                  <button class="btn btn-outline btn-sm" onclick="editSchool('${s.id}')">✏️ Izmeni</button>
+                  <button class="btn btn-danger btn-sm" onclick="deleteSchool('${s.id}')">Obriši</button>
+                </td>
+              </tr>`).join('')}
+            </tbody>
+          </table>
+        </div>`}
+      </div>
+    </div>
+  `;
+}
+
+function openSchoolModal(id) {
+  editSchoolId = id || null;
+  const s = id ? schools.find(x => x.id === id) : null;
+  document.getElementById('schoolMoT').textContent = id ? 'Izmeni školu' : 'Dodaj školu';
+  document.getElementById('schName').value = s?.name || '';
+  document.getElementById('schCity').value = s?.city || '';
+  document.getElementById('schPhone').value = s?.phone || '';
+  document.getElementById('schAddr').value = s?.address || '';
+  document.getElementById('schEmail').value = s?.email || '';
+  openMo('schoolMo');
+}
+
+function editSchool(id) { openSchoolModal(id); }
+
+async function saveSchool() {
+  const data = {
+    name: document.getElementById('schName').value.trim(),
+    city: document.getElementById('schCity').value.trim() || null,
+    phone: document.getElementById('schPhone').value.trim() || null,
+    address: document.getElementById('schAddr').value.trim() || null,
+    email: document.getElementById('schEmail').value.trim() || null,
+  };
+  if (!data.name) return alert('Unesite naziv škole!');
+  if (editSchoolId) await dbUpdate('schools', editSchoolId, data);
+  else await dbInsert('schools', data);
+  closeMo('schoolMo');
+  schools = await dbFetch('schools', 'select=*&order=name');
+  renderSchoolSelector();
+  schoolsPage();
+}
+
+async function deleteSchool(id) {
+  if (!confirm('Obrisati školu i sve podatke?')) return;
+  await dbDelete('schools', id);
+  schools = await dbFetch('schools', 'select=*&order=name');
+  renderSchoolSelector();
+  schoolsPage();
+}
+
+// ===== USERS =====
+function usersPage() {
+  document.getElementById('pageContent').innerHTML = `
+    <div class="page-title">Korisnici</div>
+    <div class="page-sub">Upravljanje korisnicima sistema</div>
+    <div class="card">
+      <div class="card-header">
+        <h2>👥 Lista korisnika</h2>
+        <button class="btn btn-blue btn-sm" onclick="openUserModal()">+ Dodaj korisnika</button>
+      </div>
+      <div class="card-body" style="padding:0">
+        ${!users.length ? '<div class="empty">Nema korisnika.</div>' : `
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>Ime i prezime</th><th>Uloga</th><th>Škola</th><th>Email</th><th>Kor. ime</th><th></th></tr></thead>
+            <tbody id="usersTbody">
+              <tr><td colspan="6" style="text-align:center;color:var(--muted)">Učitavam...</td></tr>
+            </tbody>
+          </table>
+        </div>`}
+      </div>
+    </div>
+  `;
+  if (users.length) loadUsersTable();
+}
+
+async function loadUsersTable() {
+  const usernames = await dbFetch('usernames', 'select=user_id,username');
+  const unMap = {};
+  usernames.forEach(u => unMap[u.user_id] = u.username);
+  document.getElementById('usersTbody').innerHTML = users.map(u => `<tr>
+    <td><strong>${esc(u.first_name || '')} ${esc(u.last_name || '')}</strong></td>
+    <td><span class="badge ${ROLE_BADGES[u.role] || 'badge-gray'}">${ROLE_LABELS[u.role] || u.role}</span></td>
+    <td>${esc(u.schools?.name || '—')}</td>
+    <td style="font-size:.78rem;color:var(--muted)">${esc(u.id)}</td>
+    <td><code style="font-size:.75rem">${esc(unMap[u.id] || '—')}</code></td>
+    <td><button class="btn btn-danger btn-sm" onclick="deleteUser('${u.id}')">Obriši</button></td>
+  </tr>`).join('');
+}
+
+async function openUserModal() {
+  editUserId = null;
+  document.getElementById('userMoT').textContent = 'Dodaj korisnika';
+  document.getElementById('uFirst').value = '';
+  document.getElementById('uLast').value = '';
+  document.getElementById('uUsername').value = '';
+  document.getElementById('uEmail').value = '';
+  document.getElementById('uPass').value = '';
+  document.getElementById('uRole').value = 'nastavnik';
+  document.getElementById('uPhone').value = '';
+  document.getElementById('userMoMsg').textContent = '';
+  openMo('userMo');
+}
+
+async function previewUsername() {
+  const first = document.getElementById('uFirst').value.trim();
+  const last = document.getElementById('uLast').value.trim();
+  if (first && last) {
+    const username = await getUniqueUsername(first, last);
+    document.getElementById('uUsername').value = username;
+  }
+}
+
+async function saveUser() {
+  const first = document.getElementById('uFirst').value.trim();
+  const last = document.getElementById('uLast').value.trim();
+  const email = document.getElementById('uEmail').value.trim();
+  const pass = document.getElementById('uPass').value;
+  const role = document.getElementById('uRole').value;
+  const phone = document.getElementById('uPhone').value.trim() || null;
+  const msg = document.getElementById('userMoMsg');
+
+  if (!first || !last || !email || !pass) { msg.textContent = 'Popunite sva obavezna polja!'; return; }
+  if (pass.length < 6) { msg.textContent = 'Lozinka mora imati min. 6 karaktera!'; return; }
+
+  msg.textContent = 'Kreiram nalog...';
+
+  // Create auth user
+  const { data: authData, error } = await sb.auth.admin ? 
+    { data: null, error: { message: 'Admin API nije dostupan' } } :
+    await sb.auth.signUp({ email, password: pass });
+
+  if (error) { msg.textContent = 'Greška: ' + error.message; return; }
+
+  const userId = authData?.user?.id;
+  if (!userId) { msg.textContent = 'Greška pri kreiranju naloga.'; return; }
+
+  // Create profile
+  await dbInsert('user_profiles', {
+    id: userId,
+    first_name: first,
+    last_name: last,
+    role,
+    phone,
+    school_id: currentSchoolId || null
+  });
+
+  // Create username
+  const username = await getUniqueUsername(first, last);
+  await dbInsert('usernames', { user_id: userId, username });
+
+  closeMo('userMo');
+  users = await dbFetch('user_profiles', 'select=*,schools(name)&order=last_name');
+  usersPage();
+}
+
+async function deleteUser(id) {
+  if (!confirm('Obrisati korisnika?')) return;
+  await dbDelete('user_profiles', id);
+  users = await dbFetch('user_profiles', 'select=*,schools(name)&order=last_name');
+  usersPage();
+}
+
+// ===== YEARS =====
+function yearsPage() {
+  if (!currentSchoolId) { document.getElementById('pageContent').innerHTML = '<div class="empty">Izaberi školu.</div>'; return; }
+  document.getElementById('pageContent').innerHTML = `
+    <div class="page-title">Školske godine</div>
+    <div class="card">
+      <div class="card-header">
+        <h2>📅 Školske godine</h2>
+        <button class="btn btn-blue btn-sm" onclick="openMo('yearMo')">+ Dodaj godinu</button>
+      </div>
+      <div class="card-body" style="padding:0">
+        ${!years.length ? '<div class="empty">Nema školskih godina.</div>' : `
+        <div class="table-wrap"><table>
+          <thead><tr><th>Naziv</th><th>Početak</th><th>Kraj</th><th>Status</th><th></th></tr></thead>
+          <tbody>${years.map(y => `<tr>
+            <td><strong>${esc(y.name)}</strong></td>
+            <td>${fmt(y.start_date)}</td>
+            <td>${fmt(y.end_date)}</td>
+            <td>${y.is_active ? '<span class="badge badge-green">Aktivna</span>' : '<span class="badge badge-gray">Neaktivna</span>'}</td>
+            <td style="display:flex;gap:6px">
+              ${!y.is_active ? `<button class="btn btn-outline btn-sm" onclick="activateYear('${y.id}')">Aktiviraj</button>` : ''}
+              <button class="btn btn-danger btn-sm" onclick="deleteYear('${y.id}')">Obriši</button>
+            </td>
+          </tr>`).join('')}</tbody>
+        </table></div>`}
+      </div>
+    </div>
+  `;
+}
+
+async function saveYear() {
+  const name = document.getElementById('yrName').value.trim();
+  const start = document.getElementById('yrStart').value;
+  const end = document.getElementById('yrEnd').value;
+  if (!name || !start || !end) return alert('Popunite sva polja!');
+  await dbInsert('school_years2', { school_id: currentSchoolId, name, start_date: start, end_date: end, is_active: false });
+  closeMo('yearMo');
+  years = await dbFetch('school_years2', `select=*&school_id=eq.${currentSchoolId}&order=start_date.desc`);
+  yearsPage();
+}
+
+async function activateYear(id) {
+  const token = JSON.parse(localStorage.getItem('sb-uygjcopyohzslvrzvrmv-auth-token'))?.access_token;
+  await fetch(`${SB_URL}/rest/v1/school_years2?school_id=eq.${currentSchoolId}`, {
+    method: 'PATCH',
+    headers: { 'apikey': SB_KEY, 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
+    body: JSON.stringify({ is_active: false })
+  });
+  await dbUpdate('school_years2', id, { is_active: true });
+  years = await dbFetch('school_years2', `select=*&school_id=eq.${currentSchoolId}&order=start_date.desc`);
+  yearsPage();
+}
+
+async function deleteYear(id) {
+  if (!confirm('Obrisati školsku godinu?')) return;
+  await dbDelete('school_years2', id);
+  years = await dbFetch('school_years2', `select=*&school_id=eq.${currentSchoolId}&order=start_date.desc`);
+  yearsPage();
+}
+
+// ===== CLASSES =====
+function classesPage() {
+  if (!currentSchoolId) { document.getElementById('pageContent').innerHTML = '<div class="empty">Izaberi školu.</div>'; return; }
+  document.getElementById('pageContent').innerHTML = `
+    <div class="page-title">Odeljenja</div>
+    <div class="card">
+      <div class="card-header">
+        <h2>🎓 Odeljenja</h2>
+        <button class="btn btn-blue btn-sm" onclick="openClassModal()">+ Dodaj odeljenje</button>
+      </div>
+      <div class="card-body" style="padding:0">
+        ${!classes.length ? '<div class="empty">Nema odeljenja.</div>' : `
+        <div class="table-wrap"><table>
+          <thead><tr><th>Naziv</th><th>Razred</th><th>Razredni starešina</th><th></th></tr></thead>
+          <tbody>${classes.map(c => `<tr>
+            <td><strong>${esc(c.name)}</strong></td>
+            <td>${c.grade}. razred</td>
+            <td>${c.user_profiles ? esc(c.user_profiles.first_name + ' ' + c.user_profiles.last_name) : '—'}</td>
+            <td><button class="btn btn-danger btn-sm" onclick="deleteClass('${c.id}')">Obriši</button></td>
+          </tr>`).join('')}</tbody>
+        </table></div>`}
+      </div>
+    </div>
+  `;
+}
+
+async function openClassModal() {
+  const staresine = users.filter(u => u.role === 'staresina' || u.role === 'nastavnik');
+  document.getElementById('clStaresina').innerHTML = '<option value="">— Izaberi —</option>' +
+    staresine.map(u => `<option value="${u.id}">${esc(u.first_name)} ${esc(u.last_name)}</option>`).join('');
+  openMo('classMo');
+}
+
+async function saveClass() {
+  const name = document.getElementById('clName').value.trim();
+  const grade = parseInt(document.getElementById('clGrade').value);
+  const staresina_id = document.getElementById('clStaresina').value || null;
+  if (!name) return alert('Unesite naziv odeljenja!');
+  if (!currentYearId) return alert('Izaberi školsku godinu!');
+  await dbInsert('classes', { school_id: currentSchoolId, school_year_id: currentYearId, name, grade, staresina_id });
+  closeMo('classMo');
+  classes = await dbFetch('classes', `select=*,user_profiles(first_name,last_name)&school_id=eq.${currentSchoolId}&order=grade`);
+  classesPage();
+}
+
+async function deleteClass(id) {
+  if (!confirm('Obrisati odeljenje?')) return;
+  await dbDelete('classes', id);
+  classes = await dbFetch('classes', `select=*,user_profiles(first_name,last_name)&school_id=eq.${currentSchoolId}&order=grade`);
+  classesPage();
+}
+
+// ===== SUBJECTS =====
+function subjectsPage() {
+  if (!currentSchoolId) { document.getElementById('pageContent').innerHTML = '<div class="empty">Izaberi školu.</div>'; return; }
+  document.getElementById('pageContent').innerHTML = `
+    <div class="page-title">Predmeti</div>
+    <div class="card">
+      <div class="card-header">
+        <h2>📖 Predmeti</h2>
+        <button class="btn btn-blue btn-sm" onclick="openMo('subjectMo')">+ Dodaj predmet</button>
+      </div>
+      <div class="card-body" style="padding:0">
+        ${!subjects.length ? '<div class="empty">Nema predmeta.</div>' : `
+        <div class="table-wrap"><table>
+          <thead><tr><th>Naziv</th><th>Vrsta</th><th></th></tr></thead>
+          <tbody>${subjects.map(s => `<tr>
+            <td><strong>${esc(s.name)}</strong></td>
+            <td><span class="badge badge-blue">${esc(SUBJECT_TYPE_LABELS[s.type] || s.type)}</span></td>
+            <td><button class="btn btn-danger btn-sm" onclick="deleteSubject('${s.id}')">Obriši</button></td>
+          </tr>`).join('')}</tbody>
+        </table></div>`}
+      </div>
+    </div>
+  `;
+}
+
+async function saveSubject() {
+  const name = document.getElementById('sjName').value.trim();
+  const type = document.getElementById('sjType').value;
+  if (!name) return alert('Unesite naziv predmeta!');
+  await dbInsert('school_subjects', { school_id: currentSchoolId, name, type });
+  closeMo('subjectMo');
+  subjects = await dbFetch('school_subjects', `select=*&school_id=eq.${currentSchoolId}&order=name`);
+  subjectsPage();
+}
+
+async function deleteSubject(id) {
+  if (!confirm('Obrisati predmet?')) return;
+  await dbDelete('school_subjects', id);
+  subjects = await dbFetch('school_subjects', `select=*&school_id=eq.${currentSchoolId}&order=name`);
+  subjectsPage();
+}
+
+// ===== ASSIGNMENTS =====
+function assignmentsPage() {
+  if (!currentSchoolId) { document.getElementById('pageContent').innerHTML = '<div class="empty">Izaberi školu.</div>'; return; }
+  document.getElementById('pageContent').innerHTML = `
+    <div class="page-title">Dodela nastavnika</div>
+    <div class="card">
+      <div class="card-header">
+        <h2>👨‍🏫 Nastavnici po predmetima</h2>
+        <button class="btn btn-blue btn-sm" onclick="openAssignModal()">+ Dodeli nastavnika</button>
+      </div>
+      <div class="card-body" style="padding:0">
+        ${!assignments.length ? '<div class="empty">Nema dodela.</div>' : `
+        <div class="table-wrap"><table>
+          <thead><tr><th>Odeljenje</th><th>Predmet</th><th>Nastavnik</th><th>Od</th><th>Do</th><th></th></tr></thead>
+          <tbody>${assignments.map(a => `<tr>
+            <td>${esc(a.classes?.name || '—')}</td>
+            <td>${esc(a.school_subjects?.name || '—')}</td>
+            <td>${a.user_profiles ? esc(a.user_profiles.first_name + ' ' + a.user_profiles.last_name) : '—'}</td>
+            <td>${fmt(a.date_from)}</td>
+            <td>${fmt(a.date_to)}</td>
+            <td><button class="btn btn-danger btn-sm" onclick="deleteAssignment('${a.id}')">Obriši</button></td>
+          </tr>`).join('')}</tbody>
+        </table></div>`}
+      </div>
+    </div>
+  `;
+}
+
+async function openAssignModal() {
+  document.getElementById('asClass').innerHTML = '<option value="">— Izaberi —</option>' +
+    classes.map(c => `<option value="${c.id}">${esc(c.name)}</option>`).join('');
+  document.getElementById('asSubject').innerHTML = '<option value="">— Izaberi —</option>' +
+    subjects.map(s => `<option value="${s.id}">${esc(s.name)}</option>`).join('');
+  const teachers = users.filter(u => u.role === 'nastavnik' || u.role === 'staresina');
+  document.getElementById('asTeacher').innerHTML = '<option value="">— Izaberi —</option>' +
+    teachers.map(u => `<option value="${u.id}">${esc(u.first_name)} ${esc(u.last_name)}</option>`).join('');
+  openMo('assignMo');
+}
+
+async function saveAssignment() {
+  const class_id = document.getElementById('asClass').value;
+  const subject_id = document.getElementById('asSubject').value;
+  const teacher_id = document.getElementById('asTeacher').value;
+  const date_from = document.getElementById('asFrom').value;
+  const date_to = document.getElementById('asTo').value;
+  if (!class_id || !subject_id || !teacher_id || !date_from || !date_to) return alert('Popunite sva polja!');
+  await dbInsert('subject_assignments', { class_id, subject_id, teacher_id, date_from, date_to });
+  closeMo('assignMo');
+  assignments = await dbFetch('subject_assignments', `select=*,classes(name),school_subjects(name),user_profiles(first_name,last_name)&class_id=in.(${classes.map(c=>c.id).join(',') || 'null'})`);
+  assignmentsPage();
+}
+
+async function deleteAssignment(id) {
+  if (!confirm('Obrisati dodelu?')) return;
+  await dbDelete('subject_assignments', id);
+  assignments = await dbFetch('subject_assignments', `select=*,classes(name),school_subjects(name),user_profiles(first_name,last_name)&class_id=in.(${classes.map(c=>c.id).join(',') || 'null'})`);
+  assignmentsPage();
+}
+</script>
+</body>
+</html>
