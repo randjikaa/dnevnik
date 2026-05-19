@@ -44,42 +44,26 @@ async function doLogin() {
     return;
   }
 
-  // Check if input is username or email
-  if (!userInput.includes('@')) {
-    // It's a username — look up user_id then get email from auth
-    const unData = await dbFetch('usernames', `username=eq.${userInput}&select=user_id`);
-    if (!unData.length) {
-      msg.textContent = 'Korisničko ime ne postoji.';
-      msg.className = 'auth-msg err';
-      return;
-    }
-    // Store user_id and try to sign in — but we need email
-    // Use a workaround: store email in usernames table or use magic approach
-    // For now sign in with a fake email format: username@dnevnik.internal
-    // Actually best approach: try signInWithPassword with userId as email won't work
-    // We need to store email in usernames table
-    // Temporary: ask user to use email
-    msg.textContent = 'Korisničko ime pronađeno! Pokušavam prijavu...';
-    // Try to find email via RPC or stored email
-    const unEmail = await dbFetch('usernames', `username=eq.${userInput}&select=user_id,email`);
-    if (!unEmail[0]?.email) {
-      msg.textContent = 'Korisnik nema email. Prijavite se emailom: a@a.com';
-      msg.className = 'auth-msg err';
-      return;
-    }
-    const { error } = await sb.auth.signInWithPassword({ email: unEmail[0].email, password: pass });
-    if (error) {
-      msg.textContent = 'Pogrešna lozinka.';
-      msg.className = 'auth-msg err';
-      return;
-    }
-  } else {
-    const { error } = await sb.auth.signInWithPassword({ email: userInput, password: pass });
-    if (error) {
-      msg.textContent = 'Pogrešan email ili lozinka.';
-      msg.className = 'auth-msg err';
-      return;
-    }
+  // Look up email from usernames table
+  const SB_URL2 = 'https://kdxwgeocimmdfemwqnty.supabase.co';
+  const SB_KEY2 = 'sb_publishable_NSRd-Sq4PlVHNztHDsvXNA_kLHza0HN';
+  const r = await fetch(`${SB_URL2}/rest/v1/usernames?username=eq.${encodeURIComponent(userInput)}&select=email`, {
+    headers: { 'apikey': SB_KEY2, 'Content-Type': 'application/json' }
+  });
+  const unData = await r.json();
+  
+  if (!unData.length || !unData[0].email) {
+    msg.textContent = 'Korisničko ime ne postoji.';
+    msg.className = 'auth-msg err';
+    return;
+  }
+
+  const email = unData[0].email;
+  const { error } = await sb.auth.signInWithPassword({ email, password: pass });
+  if (error) {
+    msg.textContent = 'Pogrešna lozinka.';
+    msg.className = 'auth-msg err';
+    return;
   }
 
   // Load profile to determine role
