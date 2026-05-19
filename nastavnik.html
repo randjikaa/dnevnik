@@ -1,0 +1,508 @@
+<!DOCTYPE html>
+<html lang="sr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>eDnevnik — Nastavnik</title>
+<link rel="stylesheet" href="style.css">
+<style>
+.detail-header {
+  background: linear-gradient(135deg, #1e3a8a, #2563eb);
+  color: #fff; border-radius: 12px;
+  padding: 20px 24px; margin-bottom: 20px;
+  display: flex; align-items: center; gap: 16px; flex-wrap: wrap;
+}
+.detail-header .back-btn {
+  background: rgba(255,255,255,.15); border: none; color: #fff;
+  border-radius: 8px; padding: 7px 12px; cursor: pointer; font-size: .8rem;
+}
+.detail-title { font-size: 1.3rem; font-weight: 800; }
+.detail-sub { font-size: .8rem; opacity: .75; margin-top: 2px; }
+.tabs { display: flex; border-bottom: 2px solid var(--border); margin-bottom: 20px; overflow-x: auto; }
+.tab-btn { padding: 10px 16px; background: none; border: none; color: var(--muted); font-family: 'DM Sans',sans-serif; font-weight: 600; font-size: .82rem; cursor: pointer; border-bottom: 2px solid transparent; margin-bottom: -2px; white-space: nowrap; }
+.tab-btn.active { color: var(--accent); border-bottom-color: var(--accent); }
+
+.student-row { display: flex; align-items: center; gap: 12px; padding: 11px 0; border-bottom: 1px solid var(--border); }
+.student-row:last-child { border-bottom: none; }
+.student-num { width: 24px; text-align: center; color: var(--muted); font-size: .78rem; }
+.student-name { flex: 1; font-weight: 500; font-size: .88rem; }
+.student-avg { font-family: 'DM Mono',monospace; font-weight: 700; font-size: .9rem; min-width: 40px; text-align: center; }
+
+.grade-pill { display: inline-flex; align-items: center; justify-content: center; width: 30px; height: 30px; border-radius: 50%; font-weight: 700; font-size: .85rem; cursor: pointer; transition: all .15s; }
+.g5 { background: #dcfce7; color: #16a34a; }
+.g4 { background: #dbeafe; color: #2563eb; }
+.g3 { background: #fef3c7; color: #d97706; }
+.g2 { background: #fee2e2; color: #dc2626; }
+.g1 { background: #fee2e2; color: #dc2626; }
+.g0 { background: var(--surface2); color: var(--muted); }
+
+.lesson-card { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 14px 16px; margin-bottom: 8px; }
+.lesson-date { font-size: .72rem; color: var(--muted); margin-bottom: 4px; }
+.lesson-title { font-weight: 600; font-size: .88rem; }
+.lesson-meta { font-size: .72rem; color: var(--muted); margin-top: 3px; }
+</style>
+</head>
+<body>
+<div class="app-wrap" id="app" style="display:none">
+  <div class="sidebar">
+    <div class="sidebar-logo">
+      <div class="sidebar-logo-icon">📚</div>
+      <span>eDnevnik</span>
+    </div>
+    <div class="sidebar-school" id="sbClass">— Izaberi odeljenje —</div>
+    <nav class="sidebar-nav">
+      <div class="nav-section">
+        <div class="nav-section-title">Moja odeljenja</div>
+        <div id="myClassesList"></div>
+      </div>
+      <div class="nav-section" id="classNav" style="display:none">
+        <div class="nav-section-title">Odeljenje</div>
+        <div class="nav-item" onclick="showSection('ocene')" data-sec="ocene"><span class="ni">📊</span> Ocene</div>
+        <div class="nav-item" onclick="showSection('casovi')" data-sec="casovi"><span class="ni">📝</span> Časovi</div>
+        <div class="nav-item" onclick="showSection('izostanci')" data-sec="izostanci"><span class="ni">📅</span> Izostanci</div>
+      </div>
+      <div class="nav-section">
+        <div class="nav-section-title">Opšte</div>
+        <div class="nav-item" onclick="showSection('veca')" data-sec="veca"><span class="ni">📋</span> Stručna veća</div>
+      </div>
+    </nav>
+    <div class="sidebar-bottom">
+      <div class="user-chip">
+        <div class="user-avatar" id="userAvatar">N</div>
+        <div class="user-info">
+          <div class="user-name" id="userName">—</div>
+          <div class="user-role">Nastavnik</div>
+        </div>
+        <a href="profil.html" style="color:rgba(255,255,255,.4);font-size:.9rem;padding:4px;text-decoration:none">👤</a>
+        <button class="btn-logout-small" onclick="logout()">↩</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="main">
+    <div class="topbar">
+      <div class="topbar-title" id="pageTitle">Moja odeljenja</div>
+      <div class="topbar-right">
+        <select class="topbar-select" id="classSel" onchange="changeClass()">
+          <option value="">— Izaberi odeljenje —</option>
+        </select>
+        <select class="topbar-select" id="semSel" onchange="reloadSection()">
+          <option value="1">1. Polugodište</option>
+          <option value="2">2. Polugodište</option>
+        </select>
+      </div>
+    </div>
+    <div class="content" id="pageContent">
+      <div class="loading">Učitavam...</div>
+    </div>
+  </div>
+</div>
+
+<!-- GRADE MODAL -->
+<div class="mo" id="gradeMo" style="display:none" onclick="if(event.target===this)closeMo('gradeMo')">
+  <div class="modal">
+    <h3 id="gradeMoT">Dodaj ocenu</h3>
+    <div style="font-size:.85rem;color:var(--muted);margin-bottom:12px" id="gradeStudentName"></div>
+    <div style="display:flex;gap:10px;justify-content:center;margin-bottom:16px">
+      <div class="grade-pill g5" onclick="selectGrade(5)" id="gb5">5</div>
+      <div class="grade-pill g4" onclick="selectGrade(4)" id="gb4">4</div>
+      <div class="grade-pill g3" onclick="selectGrade(3)" id="gb3">3</div>
+      <div class="grade-pill g2" onclick="selectGrade(2)" id="gb2">2</div>
+      <div class="grade-pill g1" onclick="selectGrade(1)" id="gb1">1</div>
+    </div>
+    <div class="form-group"><label>Tip ocene</label>
+      <select id="gradeType">
+        <option value="">— Izaberi —</option>
+        <option>Usmeno odgovaranje</option>
+        <option>Kontrolni zadatak</option>
+        <option>Pismeni zadatak</option>
+        <option>Petnaestominutna vežba</option>
+        <option>Aktivnost na času</option>
+        <option>Praktičan rad</option>
+        <option>Prezentacija</option>
+        <option>Domaći zadatak</option>
+        <option>Ostalo</option>
+      </select>
+    </div>
+    <div class="form-row">
+      <div class="form-group"><label>Datum *</label><input type="date" id="gradeDate"/></div>
+      <div class="form-group"><label>Polugodište</label>
+        <select id="gradeSem"><option value="1">1. pol.</option><option value="2">2. pol.</option></select>
+      </div>
+    </div>
+    <div class="form-group"><label>Beleška</label><input type="text" id="gradeNote" placeholder="Opciono..."/></div>
+    <div class="form-group"><label>Interna beleška (ne vidi roditelj)</label><input type="text" id="gradeInternal" placeholder="Opciono..."/></div>
+    <div class="modal-footer">
+      <button class="btn btn-danger btn-sm" id="gradeDelBtn" onclick="deleteGrade()" style="display:none;margin-right:auto">Obriši</button>
+      <button class="btn btn-outline" onclick="closeMo('gradeMo')">Otkaži</button>
+      <button class="btn btn-blue" onclick="saveGrade()">Sačuvaj</button>
+    </div>
+  </div>
+</div>
+
+<!-- LESSON MODAL -->
+<div class="mo" id="lessonMo" style="display:none" onclick="if(event.target===this)closeMo('lessonMo')">
+  <div class="modal">
+    <h3 id="lessonMoT">Upiši čas</h3>
+    <div class="form-row">
+      <div class="form-group"><label>Datum *</label><input type="date" id="lessonDate"/></div>
+      <div class="form-group"><label>Čas (0-8)</label><input type="number" id="lessonPeriod" min="0" max="8" value="1"/></div>
+    </div>
+    <div class="form-group"><label>Nastavna jedinica</label><input type="text" id="lessonTitle" placeholder="npr. Kvadratne jednačine..."/></div>
+    <div class="form-group"><label>Tip časa</label>
+      <select id="lessonType">
+        <option value="obrada">Obrada</option>
+        <option value="vezbanje">Vežbanje</option>
+        <option value="utvrdivanje">Utvrđivanje</option>
+        <option value="sistematizacija">Sistematizacija</option>
+        <option value="provera">Provera znanja</option>
+        <option value="laboratorijska">Laboratorijska vežba</option>
+        <option value="ekskurzija">Ekskurzija/Izlet</option>
+      </select>
+    </div>
+    <div class="form-group"><label>Literatura</label><input type="text" id="lessonLit" placeholder="Udžbenik, str. ..."/></div>
+    <div class="form-group"><label>Beleška</label><textarea id="lessonNote" placeholder="Napomene o času..." style="height:70px"></textarea></div>
+    <div class="modal-footer">
+      <button class="btn btn-danger btn-sm" id="lessonDelBtn" onclick="deleteLesson()" style="display:none;margin-right:auto">Obriši</button>
+      <button class="btn btn-outline" onclick="closeMo('lessonMo')">Otkaži</button>
+      <button class="btn btn-blue" onclick="saveLesson()">Sačuvaj</button>
+    </div>
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.26.0/dist/umd/supabase.min.js"></script>
+<script src="app.js"></script>
+<script>
+let myAssignments = [], myClasses = [], currentClassId = null, currentAssignmentId = null;
+let students = [], grades = [], lessons = [], absences = [];
+let selectedGradeVal = 5, editGradeId = null, editStudentId = null, editLessonId = null;
+let currentSection = 'ocene';
+
+const GRADE_LABELS = {1:'I',2:'II',3:'III',4:'IV',5:'V',6:'VI',7:'VII',8:'VIII',9:'I SŠ',10:'II SŠ',11:'III SŠ'};
+
+document.addEventListener('DOMContentLoaded', async () => {
+  const user = await getSession();
+  if (!user) { window.location.href = 'index.html'; return; }
+  currentUser = user;
+  currentProfile = await loadProfile(user.id);
+  if (!currentProfile) { window.location.href = 'index.html'; return; }
+  document.getElementById('app').style.display = 'flex';
+  document.getElementById('userName').textContent = `${currentProfile.first_name||''} ${currentProfile.last_name||''}`.trim();
+  document.getElementById('userAvatar').textContent = (currentProfile.first_name?.[0]||'N').toUpperCase();
+
+  // Load my assignments (classes where I teach)
+  myAssignments = await dbFetch('subject_assignments', `select=*,classes(id,name,grade,section,user_profiles(first_name,last_name)),school_subjects(id,name,type)&teacher_id=eq.${currentUser.id}`);
+  
+  // Unique classes
+  const classMap = {};
+  myAssignments.forEach(a => { if(a.classes) classMap[a.classes.id] = a.classes; });
+  myClasses = Object.values(classMap);
+
+  renderClassSelector();
+  renderMyClassesList();
+  
+  if (myClasses.length) {
+    currentClassId = myClasses[0].id;
+    document.getElementById('classSel').value = currentClassId;
+    await loadClassData();
+    showSection('ocene');
+  } else {
+    document.getElementById('pageContent').innerHTML = '<div class="empty">Nisi dodeljen ni jednom odeljenju.</div>';
+  }
+});
+
+function renderClassSelector() {
+  const sel = document.getElementById('classSel');
+  sel.innerHTML = '<option value="">— Izaberi odeljenje —</option>' +
+    myClasses.map(c => {
+      const st = c.user_profiles;
+      const lbl = `${GRADE_LABELS[c.grade]}-${c.section}${st?' — '+st.first_name[0]+'. '+st.last_name:''}`;
+      return `<option value="${c.id}">${lbl}</option>`;
+    }).join('');
+}
+
+function renderMyClassesList() {
+  document.getElementById('myClassesList').innerHTML = myClasses.map(c => {
+    const subjects = myAssignments.filter(a=>a.classes?.id===c.id).map(a=>a.school_subjects?.name).join(', ');
+    return `<div class="nav-item" onclick="selectClass('${c.id}')" data-class="${c.id}">
+      <span class="ni">🎓</span>
+      <div style="overflow:hidden">
+        <div>${GRADE_LABELS[c.grade]}-${c.section}</div>
+        <div style="font-size:.65rem;color:rgba(255,255,255,.4);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(subjects)}</div>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+async function selectClass(classId) {
+  currentClassId = classId;
+  document.getElementById('classSel').value = classId;
+  document.querySelectorAll('[data-class]').forEach(el => el.classList.toggle('active', el.dataset.class===classId));
+  const c = myClasses.find(x=>x.id===classId);
+  const st = c?.user_profiles;
+  document.getElementById('sbClass').textContent = c ? `${GRADE_LABELS[c.grade]}-${c.section}${st?' — '+st.first_name[0]+'. '+st.last_name:''}` : '—';
+  document.getElementById('classNav').style.display = '';
+  await loadClassData();
+  showSection(currentSection);
+}
+
+async function changeClass() {
+  const classId = document.getElementById('classSel').value;
+  if (classId) await selectClass(classId);
+}
+
+async function loadClassData() {
+  if (!currentClassId) return;
+  const classAssignments = myAssignments.filter(a=>a.classes?.id===currentClassId);
+  currentAssignmentId = classAssignments[0]?.id || null;
+  
+  const [studData, gradesData, lessonsData, absData] = await Promise.all([
+    dbFetch('class_students', `select=*,user_profiles(id,first_name,last_name)&class_id=eq.${currentClassId}`),
+    dbFetch('student_grades', `select=*&assignment_id=in.(${classAssignments.map(a=>a.id).join(',') || 'null'})`),
+    dbFetch('lessons2', `select=*&assignment_id=in.(${classAssignments.map(a=>a.id).join(',') || 'null'})&order=date.desc`).catch(()=>[]),
+    dbFetch('student_absences', `select=*&class_id=eq.${currentClassId}&order=date.desc`).catch(()=>[]),
+  ]);
+  students = studData;
+  grades = gradesData;
+  lessons = Array.isArray(lessonsData) ? lessonsData : [];
+  absences = Array.isArray(absData) ? absData : [];
+}
+
+function reloadSection() { showSection(currentSection); }
+
+async function showSection(sec) {
+  currentSection = sec;
+  document.querySelectorAll('[data-sec]').forEach(el => el.classList.toggle('active', el.dataset.sec===sec));
+  document.getElementById('pageTitle').textContent = {ocene:'Ocene',casovi:'Časovi',izostanci:'Izostanci',veca:'Stručna veća'}[sec]||sec;
+  if (sec==='ocene') renderOcene();
+  else if (sec==='casovi') renderCasovi();
+  else if (sec==='izostanci') renderIzostanci();
+  else if (sec==='veca') renderVeca();
+}
+
+// ===== OCENE =====
+function renderOcene() {
+  if (!currentClassId) { document.getElementById('pageContent').innerHTML='<div class="empty">Izaberi odeljenje.</div>'; return; }
+  const sem = parseInt(document.getElementById('semSel').value)||1;
+  const classAssignments = myAssignments.filter(a=>a.classes?.id===currentClassId);
+
+  let html = '';
+  classAssignments.forEach(a => {
+    const subjectGrades = grades.filter(g=>g.assignment_id===a.id&&g.semester===sem);
+    html += `<div class="card" style="margin-bottom:16px">
+      <div class="card-header">
+        <h2>${esc(a.school_subjects?.name||'—')} <span class="badge badge-blue" style="font-size:.65rem">${esc(SUBJECT_TYPE_LABELS[a.school_subjects?.type]||'')}</span></h2>
+      </div>
+      <div class="card-body" style="padding:0">
+        ${!students.length?'<div class="empty">Nema učenika.</div>':`
+        <div style="padding:0 16px">
+          ${students.map((s,i) => {
+            const sg = subjectGrades.filter(g=>g.student_id===s.user_profiles?.id).sort((a,b)=>a.date?.localeCompare(b.date||'')||0);
+            const avg = sg.length ? (sg.reduce((x,g)=>x+g.value,0)/sg.length).toFixed(2) : '—';
+            const avgClass = !sg.length?'g0':parseFloat(avg)>=4.5?'g5':parseFloat(avg)>=3.5?'g4':parseFloat(avg)>=2.5?'g3':'g2';
+            return `<div class="student-row">
+              <div class="student-num">${i+1}.</div>
+              <div class="student-name">${esc(s.user_profiles?.first_name||'')} ${esc(s.user_profiles?.last_name||'')}</div>
+              <div style="display:flex;gap:4px;flex-wrap:wrap;flex:2">
+                ${sg.map(g=>`<div class="grade-pill g${g.value}" onclick="openEditGrade('${g.id}','${s.user_profiles?.id}','${a.id}')" title="${g.type||''}${g.note?' — '+g.note:''}\n${fmt(g.date)}">${g.value}</div>`).join('')}
+                <div class="grade-pill g0" onclick="openAddGrade('${s.user_profiles?.id}','${a.id}',${sem})" title="Dodaj ocenu" style="cursor:pointer">+</div>
+              </div>
+              <div class="student-avg grade-pill ${avgClass}" style="width:auto;padding:0 8px">${avg}</div>
+            </div>`;
+          }).join('')}
+        </div>`}
+      </div>
+    </div>`;
+  });
+
+  if (!html) html = '<div class="empty">Nisi dodeljen ni jednom predmetu u ovom odeljenju.</div>';
+  document.getElementById('pageContent').innerHTML = html;
+}
+
+function selectGrade(v) {
+  selectedGradeVal = v;
+  [1,2,3,4,5].forEach(x => {
+    const el = document.getElementById('gb'+x);
+    el.style.outline = x===v ? '3px solid var(--accent)' : 'none';
+    el.style.transform = x===v ? 'scale(1.2)' : 'scale(1)';
+  });
+}
+
+function openAddGrade(studentId, assignmentId, sem) {
+  editGradeId = null;
+  editStudentId = studentId;
+  currentAssignmentId = assignmentId;
+  const s = students.find(x=>x.user_profiles?.id===studentId);
+  document.getElementById('gradeMoT').textContent = 'Dodaj ocenu';
+  document.getElementById('gradeStudentName').textContent = `${s?.user_profiles?.first_name||''} ${s?.user_profiles?.last_name||''}`;
+  document.getElementById('gradeDate').value = new Date().toISOString().slice(0,10);
+  document.getElementById('gradeSem').value = sem;
+  document.getElementById('gradeType').value = '';
+  document.getElementById('gradeNote').value = '';
+  document.getElementById('gradeInternal').value = '';
+  document.getElementById('gradeDelBtn').style.display = 'none';
+  selectedGradeVal = 5;
+  selectGrade(5);
+  openMo('gradeMo');
+}
+
+function openEditGrade(gradeId, studentId, assignmentId) {
+  editGradeId = gradeId;
+  editStudentId = studentId;
+  currentAssignmentId = assignmentId;
+  const g = grades.find(x=>x.id===gradeId);
+  const s = students.find(x=>x.user_profiles?.id===studentId);
+  document.getElementById('gradeMoT').textContent = 'Izmeni ocenu';
+  document.getElementById('gradeStudentName').textContent = `${s?.user_profiles?.first_name||''} ${s?.user_profiles?.last_name||''}`;
+  document.getElementById('gradeDate').value = g?.date||'';
+  document.getElementById('gradeSem').value = g?.semester||1;
+  document.getElementById('gradeType').value = g?.type||'';
+  document.getElementById('gradeNote').value = g?.note||'';
+  document.getElementById('gradeInternal').value = g?.internal_note||'';
+  document.getElementById('gradeDelBtn').style.display = '';
+  selectedGradeVal = g?.value||5;
+  selectGrade(g?.value||5);
+  openMo('gradeMo');
+}
+
+async function saveGrade() {
+  const data = {
+    student_id: editStudentId,
+    assignment_id: currentAssignmentId,
+    value: selectedGradeVal,
+    semester: parseInt(document.getElementById('gradeSem').value),
+    date: document.getElementById('gradeDate').value||null,
+    type: document.getElementById('gradeType').value||null,
+    note: document.getElementById('gradeNote').value.trim()||null,
+    internal_note: document.getElementById('gradeInternal').value.trim()||null,
+  };
+  if (editGradeId) await dbUpdate('student_grades', editGradeId, data);
+  else await dbInsert('student_grades', data);
+  closeMo('gradeMo');
+  grades = await dbFetch('student_grades', `select=*&assignment_id=in.(${myAssignments.filter(a=>a.classes?.id===currentClassId).map(a=>a.id).join(',') || 'null'})`);
+  renderOcene();
+}
+
+async function deleteGrade() {
+  if (!editGradeId||!confirm('Obrisati ocenu?')) return;
+  await dbDelete('student_grades', editGradeId);
+  closeMo('gradeMo');
+  grades = await dbFetch('student_grades', `select=*&assignment_id=in.(${myAssignments.filter(a=>a.classes?.id===currentClassId).map(a=>a.id).join(',') || 'null'})`);
+  renderOcene();
+}
+
+// ===== CASOVI =====
+function renderCasovi() {
+  const classAssignments = myAssignments.filter(a=>a.classes?.id===currentClassId);
+  document.getElementById('pageContent').innerHTML = `
+    <div style="display:flex;justify-content:flex-end;margin-bottom:16px">
+      <button class="btn btn-blue" onclick="openAddLesson()">+ Upiši čas</button>
+    </div>
+    ${classAssignments.map(a => {
+      const aLessons = lessons.filter(l=>l.assignment_id===a.id);
+      return `<div class="card" style="margin-bottom:16px">
+        <div class="card-header"><h2>${esc(a.school_subjects?.name||'—')}</h2></div>
+        <div class="card-body">
+          ${!aLessons.length?'<div class="empty">Nema upisanih časova.</div>':
+          aLessons.map(l=>`<div class="lesson-card" onclick="openEditLesson('${l.id}')">
+            <div class="lesson-date">${fmt(l.date)} — Čas ${l.period}</div>
+            <div class="lesson-title">${esc(l.title||'—')}</div>
+            <div class="lesson-meta">${esc(l.type||'')}${l.literature?' · '+esc(l.literature):''}</div>
+          </div>`).join('')}
+        </div>
+      </div>`;
+    }).join('')}
+  `;
+}
+
+function openAddLesson() {
+  editLessonId = null;
+  document.getElementById('lessonMoT').textContent = 'Upiši čas';
+  document.getElementById('lessonDate').value = new Date().toISOString().slice(0,10);
+  document.getElementById('lessonPeriod').value = 1;
+  document.getElementById('lessonTitle').value = '';
+  document.getElementById('lessonType').value = 'obrada';
+  document.getElementById('lessonLit').value = '';
+  document.getElementById('lessonNote').value = '';
+  document.getElementById('lessonDelBtn').style.display = 'none';
+  openMo('lessonMo');
+}
+
+function openEditLesson(id) {
+  editLessonId = id;
+  const l = lessons.find(x=>x.id===id);
+  document.getElementById('lessonMoT').textContent = 'Izmeni čas';
+  document.getElementById('lessonDate').value = l?.date||'';
+  document.getElementById('lessonPeriod').value = l?.period||1;
+  document.getElementById('lessonTitle').value = l?.title||'';
+  document.getElementById('lessonType').value = l?.type||'obrada';
+  document.getElementById('lessonLit').value = l?.literature||'';
+  document.getElementById('lessonNote').value = l?.note||'';
+  document.getElementById('lessonDelBtn').style.display = '';
+  openMo('lessonMo');
+}
+
+async function saveLesson() {
+  const classAss = myAssignments.filter(a=>a.classes?.id===currentClassId);
+  const assignId = classAss[0]?.id;
+  if (!assignId) return alert('Nisi dodeljen predmetu!');
+  const data = {
+    assignment_id: assignId,
+    date: document.getElementById('lessonDate').value,
+    period: parseInt(document.getElementById('lessonPeriod').value)||1,
+    title: document.getElementById('lessonTitle').value.trim()||null,
+    type: document.getElementById('lessonType').value||null,
+    literature: document.getElementById('lessonLit').value.trim()||null,
+    note: document.getElementById('lessonNote').value.trim()||null,
+  };
+  if (!data.date) return alert('Unesite datum!');
+  if (editLessonId) await dbUpdate('lessons2', editLessonId, data);
+  else await dbInsert('lessons2', data);
+  closeMo('lessonMo');
+  lessons = await dbFetch('lessons2', `select=*&assignment_id=in.(${myAssignments.filter(a=>a.classes?.id===currentClassId).map(a=>a.id).join(',') || 'null'})&order=date.desc`).catch(()=>[]);
+  renderCasovi();
+}
+
+async function deleteLesson() {
+  if (!editLessonId||!confirm('Obrisati čas?')) return;
+  await dbDelete('lessons2', editLessonId);
+  closeMo('lessonMo');
+  lessons = await dbFetch('lessons2', `select=*&assignment_id=in.(${myAssignments.filter(a=>a.classes?.id===currentClassId).map(a=>a.id).join(',') || 'null'})&order=date.desc`).catch(()=>[]);
+  renderCasovi();
+}
+
+// ===== IZOSTANCI =====
+function renderIzostanci() {
+  document.getElementById('pageContent').innerHTML = `
+    <div class="card">
+      <div class="card-header"><h2>📅 Izostanci odeljenja</h2></div>
+      <div class="card-body" style="padding:0">
+        ${!students.length?'<div class="empty">Nema učenika.</div>':`
+        <div class="table-wrap"><table>
+          <thead><tr><th>Učenik</th><th>Ukupno</th><th>Opravdano</th><th>Neopravdano</th><th>Neregulisano</th></tr></thead>
+          <tbody>${students.map(s=>{
+            const sa = absences.filter(a=>a.student_id===s.user_profiles?.id);
+            return `<tr>
+              <td><strong>${esc(s.user_profiles?.first_name||'')} ${esc(s.user_profiles?.last_name||'')}</strong></td>
+              <td>${sa.length}</td>
+              <td style="color:var(--success)">${sa.filter(a=>a.status==='opravdan').length}</td>
+              <td style="color:var(--danger)">${sa.filter(a=>a.status==='neopravdan').length}</td>
+              <td style="color:var(--warning)">${sa.filter(a=>a.status==='neregulisan').length}</td>
+            </tr>`;
+          }).join('')}</tbody>
+        </table></div>`}
+      </div>
+    </div>`;
+}
+
+// ===== VECA =====
+function renderVeca() {
+  document.getElementById('pageContent').innerHTML = `
+    <div class="card">
+      <div class="card-header"><h2>📋 Stručna veća</h2><button class="btn btn-blue btn-sm" onclick="alert('Uskoro!')">+ Dodaj zapisnik</button></div>
+      <div class="card-body"><div class="empty">Uskoro — u pripremi</div></div>
+    </div>`;
+}
+</script>
+</body>
+</html>
