@@ -137,6 +137,7 @@
           <div class="user-name" id="userName">—</div>
           <div class="user-role">Administrator</div>
         </div>
+        <a href="profil.html" style="color:rgba(255,255,255,.4);font-size:.9rem;padding:4px;text-decoration:none" title="Moj profil">👤</a>
         <button class="btn-logout-small" onclick="logout()" title="Odjavi se">↩</button>
       </div>
     </div>
@@ -320,6 +321,33 @@
     <div class="modal-footer">
       <button class="btn btn-outline" onclick="closeMo('assignMo')">Otkaži</button>
       <button class="btn btn-blue" onclick="saveAssignment()">Sačuvaj</button>
+    </div>
+  </div>
+</div>
+
+<!-- EDIT USER MODAL -->
+<div class="mo" id="editUserMo" style="display:none" onclick="if(event.target===this)closeMo('editUserMo')">
+  <div class="modal">
+    <h3>Izmeni korisnika</h3>
+    <div class="form-row">
+      <div class="form-group"><label>Ime *</label><input type="text" id="euFirst"/></div>
+      <div class="form-group"><label>Prezime *</label><input type="text" id="euLast"/></div>
+    </div>
+    <div class="form-group"><label>Email</label><input type="email" id="euEmail"/></div>
+    <div class="form-group"><label>Telefon</label><input type="text" id="euPhone"/></div>
+    <div class="form-group"><label>Uloga</label>
+      <select id="euRole">
+        <option value="nastavnik">Nastavnik</option>
+        <option value="strucna_sluzba">Stručna služba</option>
+        <option value="admin">Administrator</option>
+      </select>
+    </div>
+    <div class="divider"></div>
+    <div class="form-group"><label>Nova lozinka (opciono)</label><input type="password" id="euPass" placeholder="Ostavi prazno da ne menjаš"/></div>
+    <div id="editUserMsg" style="font-size:.8rem;color:var(--danger);margin-top:4px"></div>
+    <div class="modal-footer">
+      <button class="btn btn-outline" onclick="closeMo('editUserMo')">Otkaži</button>
+      <button class="btn btn-blue" onclick="saveEditUser()">Sačuvaj</button>
     </div>
   </div>
 </div>
@@ -524,7 +552,10 @@ async function loadUsersTable() {
         <td><code style="font-size:.78rem;background:var(--surface2);padding:2px 7px;border-radius:4px">${esc(unMap[u.id]||'—')}</code></td>
         <td><span class="badge ${ROLE_BADGES[u.role]||'badge-gray'}">${ROLE_LABELS[u.role]||u.role}</span></td>
         <td>${esc(u.schools?.name||'—')}</td>
-        <td><button class="btn btn-danger btn-sm" onclick="deleteUser('${u.id}')">Obriši</button></td>
+        <td style="display:flex;gap:6px">
+          <button class="btn btn-outline btn-sm" onclick="openEditUser('${u.id}')">✏️ Izmeni</button>
+          <button class="btn btn-danger btn-sm" onclick="deleteUser('${u.id}')">Obriši</button>
+        </td>
       </tr>`).join('')}</tbody>
     </table></div>`;
 }
@@ -552,6 +583,42 @@ async function saveUser() {
   await dbInsert('usernames',{user_id:userId,username,email});
   closeMo('userMo');
   users=await dbFetch('user_profiles','select=*,schools(name)&order=last_name');
+  usersPage();
+}
+
+let editUserId = null;
+function openEditUser(id) {
+  editUserId = id;
+  const u = users.find(x=>x.id===id);
+  if (!u) return;
+  document.getElementById('euFirst').value = u.first_name||'';
+  document.getElementById('euLast').value = u.last_name||'';
+  document.getElementById('euEmail').value = u.email||'';
+  document.getElementById('euPhone').value = u.phone||'';
+  document.getElementById('euRole').value = u.role||'nastavnik';
+  document.getElementById('euPass').value = '';
+  document.getElementById('editUserMsg').textContent = '';
+  openMo('editUserMo');
+}
+
+async function saveEditUser() {
+  const first = document.getElementById('euFirst').value.trim();
+  const last = document.getElementById('euLast').value.trim();
+  const email = document.getElementById('euEmail').value.trim()||null;
+  const phone = document.getElementById('euPhone').value.trim()||null;
+  const role = document.getElementById('euRole').value;
+  const pass = document.getElementById('euPass').value;
+  const msg = document.getElementById('editUserMsg');
+  if (!first||!last) { msg.textContent='Ime i prezime su obavezni!'; return; }
+  await dbUpdate('user_profiles', editUserId, { first_name:first, last_name:last, email, phone, role });
+  if (pass) {
+    if (pass.length<6) { msg.textContent='Lozinka min. 6 karaktera!'; return; }
+    // Admin password reset via Supabase auth (requires service role in production)
+    // For now update via sb.auth.updateUser (only works for current user)
+    msg.textContent='Napomena: Lozinku može menjati samo korisnik sam iz svog profila.';
+  }
+  closeMo('editUserMo');
+  users = await dbFetch('user_profiles','select=*,schools(name)&order=last_name');
   usersPage();
 }
 
