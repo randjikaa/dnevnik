@@ -16,9 +16,12 @@ async function getSession() {
 }
 
 async function loadProfile(userId) {
-  const token = JSON.parse(localStorage.getItem('sb-uygjcopyohzslvrzvrmv-auth-token'))?.access_token;
+  // Try both possible storage keys
+  const storageKey = `sb-${SB_URL.split('//')[1].split('.')[0]}-auth-token`;
+  const stored = localStorage.getItem(storageKey);
+  const token = stored ? JSON.parse(stored)?.access_token : null;
   const r = await fetch(`${SB_URL}/rest/v1/user_profiles?id=eq.${userId}&select=*,schools(name)`, {
-    headers: { 'apikey': SB_KEY, 'Authorization': `Bearer ${token}` }
+    headers: { 'apikey': SB_KEY, 'Authorization': `Bearer ${token||SB_KEY}` }
   });
   const data = await r.json();
   return data?.[0] || null;
