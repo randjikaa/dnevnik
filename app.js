@@ -1,5 +1,5 @@
-const SB_URL = 'https://uygjcopyohzslvrzvrmv.supabase.co';
-const SB_KEY = 'sb_publishable_obcXHm5fjOYYpjVZt44u2w_aBT01gEC';
+const SB_URL = 'https://kdxwgeocimmdfemwqnty.supabase.co';
+const SB_KEY = 'sb_publishable_NSRd-Sq4PlVHNztHDsvXNA_kLHza0HN';
 const sb = supabase.createClient(SB_URL, SB_KEY);
 
 let currentUser = null;
