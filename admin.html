@@ -5,6 +5,106 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>eDnevnik — Admin panel</title>
 <link rel="stylesheet" href="style.css">
+<style>
+/* esDnevnik-like overrides */
+:root {
+  --nav-bg: #1a2744;
+  --nav-active: #2563eb;
+}
+.sidebar { background: var(--nav-bg); }
+.sidebar-logo { background: rgba(255,255,255,.05); }
+
+.class-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 16px 20px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 10px;
+  cursor: pointer;
+  transition: all .15s;
+  gap: 12px;
+}
+.class-card:hover { border-color: var(--accent); box-shadow: 0 2px 12px rgba(37,99,235,.1); }
+.class-badge {
+  width: 44px; height: 44px;
+  border-radius: 10px;
+  display: flex; align-items: center; justify-content: center;
+  font-family: 'DM Mono', monospace;
+  font-weight: 700; font-size: 1rem;
+  flex-shrink: 0;
+}
+.class-info { flex: 1; }
+.class-name { font-weight: 700; font-size: .95rem; }
+.class-meta { font-size: .75rem; color: var(--muted); margin-top: 2px; }
+.class-actions { display: flex; gap: 6px; }
+
+.grade-colors { 1: '#3b82f6', 2: '#8b5cf6', 3: '#ec4899', 4: '#f59e0b', 5: '#10b981', 6: '#06b6d4', 7: '#f97316', 8: '#ef4444' }
+
+.detail-header {
+  background: linear-gradient(135deg, #1e3a8a, #2563eb);
+  color: #fff;
+  border-radius: 12px;
+  padding: 20px 24px;
+  margin-bottom: 20px;
+  display: flex; align-items: center; gap: 16px;
+}
+.detail-header .back-btn {
+  background: rgba(255,255,255,.15);
+  border: none; color: #fff;
+  border-radius: 8px; padding: 7px 12px;
+  cursor: pointer; font-size: .8rem;
+  transition: background .15s;
+}
+.detail-header .back-btn:hover { background: rgba(255,255,255,.25); }
+.detail-title { font-size: 1.4rem; font-weight: 800; }
+.detail-sub { font-size: .8rem; opacity: .75; margin-top: 2px; }
+
+.tabs {
+  display: flex; gap: 0;
+  border-bottom: 2px solid var(--border);
+  margin-bottom: 20px;
+}
+.tab-btn {
+  padding: 10px 18px;
+  background: none; border: none;
+  color: var(--muted);
+  font-family: 'DM Sans', sans-serif;
+  font-weight: 600; font-size: .83rem;
+  cursor: pointer;
+  border-bottom: 2px solid transparent;
+  margin-bottom: -2px;
+  transition: all .15s;
+}
+.tab-btn.active { color: var(--accent); border-bottom-color: var(--accent); }
+.tab-btn:hover:not(.active) { color: var(--text); }
+
+.attendance-grid {
+  display: grid;
+  grid-template-columns: 180px repeat(auto-fill, minmax(80px, 1fr));
+  gap: 1px;
+  background: var(--border);
+  border-radius: 8px;
+  overflow: hidden;
+  font-size: .78rem;
+}
+.ag-header { background: var(--surface2); padding: 8px 10px; font-weight: 600; font-size: .72rem; color: var(--muted); text-transform: uppercase; }
+.ag-name { background: var(--surface); padding: 8px 10px; font-weight: 500; }
+.ag-cell {
+  background: var(--surface);
+  padding: 6px;
+  text-align: center;
+  cursor: pointer;
+  transition: background .1s;
+}
+.ag-cell:hover { background: var(--surface2); }
+.ag-p { color: var(--success); font-size: 1rem; }
+.ag-o { color: var(--danger); font-size: 1rem; }
+.ag-op { color: var(--warning); font-size: 1rem; }
+.ag-empty { color: var(--border2); font-size: 1rem; }
+</style>
 </head>
 <body>
 <div class="app-wrap" id="app" style="display:none">
@@ -28,7 +128,6 @@
         <div class="nav-item" onclick="showPage('years')" data-page="years"><span class="ni">📅</span> Školske godine</div>
         <div class="nav-item" onclick="showPage('classes')" data-page="classes"><span class="ni">🎓</span> Odeljenja</div>
         <div class="nav-item" onclick="showPage('subjects')" data-page="subjects"><span class="ni">📖</span> Predmeti</div>
-        <div class="nav-item" onclick="showPage('assignments')" data-page="assignments"><span class="ni">👨‍🏫</span> Dodela nastavnika</div>
       </div>
     </nav>
     <div class="sidebar-bottom">
@@ -100,11 +199,8 @@
       <div class="form-group"><label>Uloga *</label>
         <select id="uRole">
           <option value="nastavnik">Nastavnik</option>
-          <option value="staresina">Razredni starešina</option>
           <option value="strucna_sluzba">Stručna služba</option>
           <option value="admin">Administrator</option>
-          <option value="ucenik">Učenik</option>
-          <option value="roditelj">Roditelj</option>
         </select>
       </div>
       <div class="form-group"><label>Telefon</label><input type="text" id="uPhone" placeholder="06x/xxx-xxx"/></div>
@@ -138,10 +234,35 @@
   <div class="modal">
     <h3>Dodaj odeljenje</h3>
     <div class="form-row">
-      <div class="form-group"><label>Naziv *</label><input type="text" id="clName" placeholder="VII-2"/></div>
       <div class="form-group"><label>Razred *</label>
         <select id="clGrade">
-          ${[1,2,3,4,5,6,7,8].map(i=>`<option value="${i}">${i}. razred</option>`).join('')}
+          <optgroup label="Osnovna škola">
+            <option value="1">I razred OŠ</option>
+            <option value="2">II razred OŠ</option>
+            <option value="3">III razred OŠ</option>
+            <option value="4">IV razred OŠ</option>
+            <option value="5">V razred OŠ</option>
+            <option value="6">VI razred OŠ</option>
+            <option value="7">VII razred OŠ</option>
+            <option value="8">VIII razred OŠ</option>
+          </optgroup>
+          <optgroup label="Srednja škola">
+            <option value="9">I razred SŠ</option>
+            <option value="10">II razred SŠ</option>
+            <option value="11">III razred SŠ</option>
+          </optgroup>
+        </select>
+      </div>
+      <div class="form-group"><label>Oznaka *</label>
+        <select id="clSection">
+          <option value="1">1</option>
+          <option value="2">2</option>
+          <option value="3">3</option>
+          <option value="4">4</option>
+          <option value="5">5</option>
+          <option value="6">6</option>
+          <option value="7">7</option>
+          <option value="8">8</option>
         </select>
       </div>
     </div>
@@ -182,13 +303,10 @@
   </div>
 </div>
 
-<!-- ASSIGNMENT MODAL -->
+<!-- ASSIGN MODAL -->
 <div class="mo" id="assignMo" style="display:none" onclick="if(event.target===this)closeMo('assignMo')">
   <div class="modal">
     <h3>Dodeli nastavnika predmetu</h3>
-    <div class="form-group"><label>Odeljenje *</label>
-      <select id="asClass"><option value="">— Izaberi —</option></select>
-    </div>
     <div class="form-group"><label>Predmet *</label>
       <select id="asSubject"><option value="">— Izaberi —</option></select>
     </div>
@@ -206,13 +324,49 @@
   </div>
 </div>
 
+<!-- STUDENT MODAL -->
+<div class="mo" id="studentMo" style="display:none" onclick="if(event.target===this)closeMo('studentMo')">
+  <div class="modal">
+    <h3>Dodaj učenika</h3>
+    <div class="form-row">
+      <div class="form-group"><label>Ime *</label><input type="text" id="stFirst" placeholder="Marko" oninput="previewStudentUsername()"/></div>
+      <div class="form-group"><label>Prezime *</label><input type="text" id="stLast" placeholder="Marković" oninput="previewStudentUsername()"/></div>
+    </div>
+    <div class="form-group"><label>Korisničko ime</label><input type="text" id="stUsername" readonly style="opacity:.6;background:#f9fafb"/></div>
+    <div class="form-group"><label>Email *</label><input type="email" id="stEmail"/></div>
+    <div class="form-group"><label>Lozinka *</label><input type="password" id="stPass" placeholder="Min. 6 karaktera"/></div>
+    <div class="form-group"><label>Telefon roditelja</label><input type="text" id="stPhone"/></div>
+    <div id="studentMoMsg" style="font-size:.8rem;color:var(--danger);margin-top:4px"></div>
+    <div class="modal-footer">
+      <button class="btn btn-outline" onclick="closeMo('studentMo')">Otkaži</button>
+      <button class="btn btn-blue" onclick="saveStudent()">Sačuvaj</button>
+    </div>
+  </div>
+</div>
+
+<!-- ATTENDANCE MODAL -->
+<div class="mo" id="attendMo" style="display:none" onclick="if(event.target===this)closeMo('attendMo')">
+  <div class="modal">
+    <h3 id="attendMoT">Unesi prisustvo</h3>
+    <div class="form-group"><label>Datum *</label><input type="date" id="attendDate"/></div>
+    <div id="attendList" style="max-height:300px;overflow-y:auto;margin-top:8px"></div>
+    <div class="modal-footer">
+      <button class="btn btn-outline" onclick="closeMo('attendMo')">Otkaži</button>
+      <button class="btn btn-blue" onclick="saveAttendance()">Sačuvaj</button>
+    </div>
+  </div>
+</div>
+
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.26.0/dist/umd/supabase.min.js"></script>
 <script src="app.js"></script>
 <script>
-let currentSchoolId = null;
-let currentYearId = null;
+let currentSchoolId = null, currentYearId = null;
 let schools = [], users = [], years = [], classes = [], subjects = [], assignments = [];
-let editSchoolId = null, editUserId = null;
+let editSchoolId = null;
+let currentClassId = null;
+
+const GRADE_LABELS = {1:'I',2:'II',3:'III',4:'IV',5:'V',6:'VI',7:'VII',8:'VIII',9:'I SŠ',10:'II SŠ',11:'III SŠ'};
+const GRADE_COLORS = {1:'#3b82f6',2:'#8b5cf6',3:'#ec4899',4:'#f59e0b',5:'#10b981',6:'#06b6d4',7:'#f97316',8:'#ef4444',9:'#3b82f6',10:'#8b5cf6',11:'#ec4899'};
 
 // ===== INIT =====
 document.addEventListener('DOMContentLoaded', async () => {
@@ -220,12 +374,10 @@ document.addEventListener('DOMContentLoaded', async () => {
   if (!user) { window.location.href = 'index.html'; return; }
   currentUser = user;
   currentProfile = await loadProfile(user.id);
-  if (!currentProfile || currentProfile.role !== 'admin') {
-    window.location.href = 'index.html'; return;
-  }
+  if (!currentProfile || currentProfile.role !== 'admin') { window.location.href = 'index.html'; return; }
   document.getElementById('app').style.display = 'flex';
-  document.getElementById('userName').textContent = `${currentProfile.first_name || ''} ${currentProfile.last_name || ''}`.trim() || user.email;
-  document.getElementById('userAvatar').textContent = (currentProfile.first_name?.[0] || 'A').toUpperCase();
+  document.getElementById('userName').textContent = `${currentProfile.first_name||''} ${currentProfile.last_name||''}`.trim() || user.email;
+  document.getElementById('userAvatar').textContent = (currentProfile.first_name?.[0]||'A').toUpperCase();
   await loadAllData();
   showPage('dashboard');
 });
@@ -239,66 +391,61 @@ async function loadAllData() {
 function renderSchoolSelector() {
   const sel = document.getElementById('schoolSel');
   sel.innerHTML = '<option value="">— Izaberi školu —</option>' +
-    schools.map(s => `<option value="${s.id}"${s.id === currentSchoolId ? ' selected' : ''}>${esc(s.name)}</option>`).join('');
+    schools.map(s => `<option value="${s.id}"${s.id===currentSchoolId?' selected':''}>${esc(s.name)}</option>`).join('');
 }
 
 async function changeSchool() {
   currentSchoolId = document.getElementById('schoolSel').value || null;
-  document.getElementById('sbSchool').textContent = schools.find(s => s.id === currentSchoolId)?.name || '— Izaberi školu —';
+  document.getElementById('sbSchool').textContent = schools.find(s=>s.id===currentSchoolId)?.name || '— Izaberi školu —';
   if (currentSchoolId) {
     years = await dbFetch('school_years2', `select=*&school_id=eq.${currentSchoolId}&order=start_date.desc`);
-    classes = await dbFetch('classes', `select=*,user_profiles(first_name,last_name)&school_id=eq.${currentSchoolId}&order=grade`);
     subjects = await dbFetch('school_subjects', `select=*&school_id=eq.${currentSchoolId}&order=name`);
-    assignments = await dbFetch('subject_assignments', `select=*,classes(name),school_subjects(name),user_profiles(first_name,last_name)&class_id=in.(${classes.map(c=>c.id).join(',') || 'null'})`);
     const yrSel = document.getElementById('yearSel');
     yrSel.innerHTML = '<option value="">— Izaberi godinu —</option>' +
-      years.map(y => `<option value="${y.id}"${y.is_active ? ' selected' : ''}>${esc(y.name)}</option>`).join('');
-    if (years.find(y => y.is_active)) {
-      currentYearId = years.find(y => y.is_active).id;
-      document.getElementById('yearSel').value = currentYearId;
-    }
+      years.map(y => `<option value="${y.id}"${y.is_active?' selected':''}>${esc(y.name)}</option>`).join('');
+    const activeYear = years.find(y=>y.is_active);
+    if (activeYear) { currentYearId = activeYear.id; yrSel.value = currentYearId; }
+    await reloadClasses();
   }
-  const page = document.querySelector('.nav-item.active')?.dataset.page || 'dashboard';
+  const page = document.querySelector('.nav-item.active')?.dataset.page||'dashboard';
   showPage(page);
 }
 
-function changeYear() {
+async function reloadClasses() {
+  if (!currentSchoolId) return;
+  classes = await dbFetch('classes', `select=*,user_profiles(first_name,last_name)&school_id=eq.${currentSchoolId}&order=grade,section`);
+  if (classes.length) {
+    const ids = classes.map(c=>c.id).join(',');
+    assignments = await dbFetch('subject_assignments', `select=*,school_subjects(name,type),user_profiles(first_name,last_name)&class_id=in.(${ids})`);
+  }
+}
+
+async function changeYear() {
   currentYearId = document.getElementById('yearSel').value || null;
+  await reloadClasses();
 }
 
 // ===== NAVIGATION =====
 function showPage(name) {
-  document.querySelectorAll('.nav-item').forEach(el => el.classList.toggle('active', el.dataset.page === name));
-  const titles = { dashboard: 'Početna', schools: 'Škole', users: 'Korisnici', years: 'Školske godine', classes: 'Odeljenja', subjects: 'Predmeti', assignments: 'Dodela nastavnika' };
-  document.getElementById('pageTitle').textContent = titles[name] || name;
-  const pages = { dashboard, schools: schoolsPage, users: usersPage, years: yearsPage, classes: classesPage, subjects: subjectsPage, assignments: assignmentsPage };
+  document.querySelectorAll('.nav-item').forEach(el => el.classList.toggle('active', el.dataset.page===name));
+  const titles = {dashboard:'Početna',schools:'Škole',users:'Korisnici',years:'Školske godine',classes:'Odeljenja',subjects:'Predmeti'};
+  document.getElementById('pageTitle').textContent = titles[name]||name;
+  const pages = {dashboard,schools:schoolsPage,users:usersPage,years:yearsPage,classes:classesPage,subjects:subjectsPage};
   if (pages[name]) pages[name]();
 }
 
 // ===== DASHBOARD =====
 function dashboard() {
   document.getElementById('pageContent').innerHTML = `
-    <div class="page-title">Dobrodošli! 👋</div>
-    <div class="page-sub">Pregled sistema</div>
+    <div class="page-title">Dobrodošli 👋</div>
+    <div class="page-sub">Pregled sistema — ${currentProfile.first_name||''} ${currentProfile.last_name||''}</div>
     <div class="stats-grid">
-      <div class="stat-card blue">
-        <div class="stat-num">${schools.length}</div>
-        <div class="stat-lbl">Škola</div>
-      </div>
-      <div class="stat-card purple">
-        <div class="stat-num">${users.filter(u=>u.role==='nastavnik'||u.role==='staresina').length}</div>
-        <div class="stat-lbl">Nastavnika</div>
-      </div>
-      <div class="stat-card green">
-        <div class="stat-num">${users.filter(u=>u.role==='ucenik').length}</div>
-        <div class="stat-lbl">Učenika</div>
-      </div>
-      <div class="stat-card orange">
-        <div class="stat-num">${classes.length}</div>
-        <div class="stat-lbl">Odeljenja</div>
-      </div>
+      <div class="stat-card blue"><div class="stat-num">${schools.length}</div><div class="stat-lbl">Škola</div></div>
+      <div class="stat-card purple"><div class="stat-num">${users.filter(u=>u.role==='nastavnik').length}</div><div class="stat-lbl">Nastavnika</div></div>
+      <div class="stat-card green"><div class="stat-num">${users.filter(u=>u.role==='ucenik').length}</div><div class="stat-lbl">Učenika</div></div>
+      <div class="stat-card orange"><div class="stat-num">${classes.length}</div><div class="stat-lbl">Odeljenja</div></div>
     </div>
-    ${!currentSchoolId ? '<div class="card"><div class="card-body"><div class="empty">Izaberi školu iz padajućeg menija gore desno da vidiš detalje.</div></div></div>' : ''}
+    ${!currentSchoolId?'<div class="card"><div class="card-body"><div class="empty">Izaberi školu iz padajućeg menija gore desno.</div></div></div>':''}
   `;
 }
 
@@ -306,399 +453,483 @@ function dashboard() {
 function schoolsPage() {
   document.getElementById('pageContent').innerHTML = `
     <div class="page-title">Škole</div>
-    <div class="page-sub">Upravljanje školama u sistemu</div>
     <div class="card">
-      <div class="card-header">
-        <h2>🏫 Lista škola</h2>
-        <button class="btn btn-blue btn-sm" onclick="openSchoolModal()">+ Dodaj školu</button>
-      </div>
+      <div class="card-header"><h2>🏫 Lista škola</h2><button class="btn btn-blue btn-sm" onclick="openSchoolModal()">+ Dodaj školu</button></div>
       <div class="card-body" style="padding:0">
-        ${!schools.length ? '<div class="empty">Nema škola. Dodaj prvu!</div>' : `
-        <div class="table-wrap">
-          <table>
-            <thead><tr><th>Naziv</th><th>Grad</th><th>Email</th><th>Telefon</th><th></th></tr></thead>
-            <tbody>
-              ${schools.map(s => `<tr>
-                <td><strong>${esc(s.name)}</strong></td>
-                <td>${esc(s.city || '—')}</td>
-                <td>${esc(s.email || '—')}</td>
-                <td>${esc(s.phone || '—')}</td>
-                <td style="display:flex;gap:6px">
-                  <button class="btn btn-outline btn-sm" onclick="editSchool('${s.id}')">✏️ Izmeni</button>
-                  <button class="btn btn-danger btn-sm" onclick="deleteSchool('${s.id}')">Obriši</button>
-                </td>
-              </tr>`).join('')}
-            </tbody>
-          </table>
-        </div>`}
+        ${!schools.length?'<div class="empty">Nema škola.</div>':`
+        <div class="table-wrap"><table>
+          <thead><tr><th>Naziv</th><th>Grad</th><th>Email</th><th>Telefon</th><th></th></tr></thead>
+          <tbody>${schools.map(s=>`<tr>
+            <td><strong>${esc(s.name)}</strong></td>
+            <td>${esc(s.city||'—')}</td><td>${esc(s.email||'—')}</td><td>${esc(s.phone||'—')}</td>
+            <td style="display:flex;gap:6px">
+              <button class="btn btn-outline btn-sm" onclick="openSchoolModal('${s.id}')">✏️</button>
+              <button class="btn btn-danger btn-sm" onclick="deleteSchool('${s.id}')">Obriši</button>
+            </td>
+          </tr>`).join('')}</tbody>
+        </table></div>`}
       </div>
-    </div>
-  `;
+    </div>`;
 }
 
 function openSchoolModal(id) {
-  editSchoolId = id || null;
-  const s = id ? schools.find(x => x.id === id) : null;
-  document.getElementById('schoolMoT').textContent = id ? 'Izmeni školu' : 'Dodaj školu';
-  document.getElementById('schName').value = s?.name || '';
-  document.getElementById('schCity').value = s?.city || '';
-  document.getElementById('schPhone').value = s?.phone || '';
-  document.getElementById('schAddr').value = s?.address || '';
-  document.getElementById('schEmail').value = s?.email || '';
+  editSchoolId = id||null;
+  const s = id?schools.find(x=>x.id===id):null;
+  document.getElementById('schoolMoT').textContent = id?'Izmeni školu':'Dodaj školu';
+  ['schName','schCity','schPhone','schAddr','schEmail'].forEach(f => {
+    const map = {schName:'name',schCity:'city',schPhone:'phone',schAddr:'address',schEmail:'email'};
+    document.getElementById(f).value = s?.[map[f]]||'';
+  });
   openMo('schoolMo');
 }
 
-function editSchool(id) { openSchoolModal(id); }
-
 async function saveSchool() {
-  const data = {
-    name: document.getElementById('schName').value.trim(),
-    city: document.getElementById('schCity').value.trim() || null,
-    phone: document.getElementById('schPhone').value.trim() || null,
-    address: document.getElementById('schAddr').value.trim() || null,
-    email: document.getElementById('schEmail').value.trim() || null,
-  };
-  if (!data.name) return alert('Unesite naziv škole!');
-  if (editSchoolId) await dbUpdate('schools', editSchoolId, data);
-  else await dbInsert('schools', data);
+  const data = {name:document.getElementById('schName').value.trim(),city:document.getElementById('schCity').value.trim()||null,phone:document.getElementById('schPhone').value.trim()||null,address:document.getElementById('schAddr').value.trim()||null,email:document.getElementById('schEmail').value.trim()||null};
+  if (!data.name) return alert('Unesite naziv!');
+  if (editSchoolId) await dbUpdate('schools',editSchoolId,data);
+  else await dbInsert('schools',data);
   closeMo('schoolMo');
-  schools = await dbFetch('schools', 'select=*&order=name');
-  renderSchoolSelector();
-  schoolsPage();
+  schools = await dbFetch('schools','select=*&order=name');
+  renderSchoolSelector(); schoolsPage();
 }
 
 async function deleteSchool(id) {
-  if (!confirm('Obrisati školu i sve podatke?')) return;
-  await dbDelete('schools', id);
-  schools = await dbFetch('schools', 'select=*&order=name');
-  renderSchoolSelector();
-  schoolsPage();
+  if (!confirm('Obrisati školu?')) return;
+  await dbDelete('schools',id);
+  schools = await dbFetch('schools','select=*&order=name');
+  renderSchoolSelector(); schoolsPage();
 }
 
 // ===== USERS =====
 function usersPage() {
   document.getElementById('pageContent').innerHTML = `
     <div class="page-title">Korisnici</div>
-    <div class="page-sub">Upravljanje korisnicima sistema</div>
     <div class="card">
-      <div class="card-header">
-        <h2>👥 Lista korisnika</h2>
-        <button class="btn btn-blue btn-sm" onclick="openUserModal()">+ Dodaj korisnika</button>
+      <div class="card-header"><h2>👥 Korisnici</h2><button class="btn btn-blue btn-sm" onclick="openMo('userMo');previewUsername()">+ Dodaj korisnika</button></div>
+      <div class="card-body" style="padding:0" id="usersContent">
+        <div class="loading">Učitavam...</div>
       </div>
-      <div class="card-body" style="padding:0">
-        ${!users.length ? '<div class="empty">Nema korisnika.</div>' : `
-        <div class="table-wrap">
-          <table>
-            <thead><tr><th>Ime i prezime</th><th>Uloga</th><th>Škola</th><th>Email</th><th>Kor. ime</th><th></th></tr></thead>
-            <tbody id="usersTbody">
-              <tr><td colspan="6" style="text-align:center;color:var(--muted)">Učitavam...</td></tr>
-            </tbody>
-          </table>
-        </div>`}
-      </div>
-    </div>
-  `;
-  if (users.length) loadUsersTable();
+    </div>`;
+  loadUsersTable();
 }
 
 async function loadUsersTable() {
-  const usernames = await dbFetch('usernames', 'select=user_id,username');
-  const unMap = {};
-  usernames.forEach(u => unMap[u.user_id] = u.username);
-  document.getElementById('usersTbody').innerHTML = users.map(u => `<tr>
-    <td><strong>${esc(u.first_name || '')} ${esc(u.last_name || '')}</strong></td>
-    <td><span class="badge ${ROLE_BADGES[u.role] || 'badge-gray'}">${ROLE_LABELS[u.role] || u.role}</span></td>
-    <td>${esc(u.schools?.name || '—')}</td>
-    <td style="font-size:.78rem;color:var(--muted)">${esc(u.id)}</td>
-    <td><code style="font-size:.75rem">${esc(unMap[u.id] || '—')}</code></td>
-    <td><button class="btn btn-danger btn-sm" onclick="deleteUser('${u.id}')">Obriši</button></td>
-  </tr>`).join('');
-}
-
-async function openUserModal() {
-  editUserId = null;
-  document.getElementById('userMoT').textContent = 'Dodaj korisnika';
-  document.getElementById('uFirst').value = '';
-  document.getElementById('uLast').value = '';
-  document.getElementById('uUsername').value = '';
-  document.getElementById('uEmail').value = '';
-  document.getElementById('uPass').value = '';
-  document.getElementById('uRole').value = 'nastavnik';
-  document.getElementById('uPhone').value = '';
-  document.getElementById('userMoMsg').textContent = '';
-  openMo('userMo');
+  const usernames = await dbFetch('usernames','select=user_id,username');
+  const unMap = {}; usernames.forEach(u=>unMap[u.user_id]=u.username);
+  document.getElementById('usersContent').innerHTML = !users.length?'<div class="empty">Nema korisnika.</div>':`
+    <div class="table-wrap"><table>
+      <thead><tr><th>Ime i prezime</th><th>Korisničko ime</th><th>Uloga</th><th>Škola</th><th></th></tr></thead>
+      <tbody>${users.filter(u=>u.role!=='ucenik'&&u.role!=='roditelj').map(u=>`<tr>
+        <td><strong>${esc(u.first_name||'')} ${esc(u.last_name||'')}</strong></td>
+        <td><code style="font-size:.78rem;background:var(--surface2);padding:2px 7px;border-radius:4px">${esc(unMap[u.id]||'—')}</code></td>
+        <td><span class="badge ${ROLE_BADGES[u.role]||'badge-gray'}">${ROLE_LABELS[u.role]||u.role}</span></td>
+        <td>${esc(u.schools?.name||'—')}</td>
+        <td><button class="btn btn-danger btn-sm" onclick="deleteUser('${u.id}')">Obriši</button></td>
+      </tr>`).join('')}</tbody>
+    </table></div>`;
 }
 
 async function previewUsername() {
   const first = document.getElementById('uFirst').value.trim();
   const last = document.getElementById('uLast').value.trim();
-  if (first && last) {
-    const username = await getUniqueUsername(first, last);
-    document.getElementById('uUsername').value = username;
-  }
+  if (first&&last) document.getElementById('uUsername').value = await getUniqueUsername(first,last);
 }
 
 async function saveUser() {
-  const first = document.getElementById('uFirst').value.trim();
-  const last = document.getElementById('uLast').value.trim();
-  const email = document.getElementById('uEmail').value.trim();
-  const pass = document.getElementById('uPass').value;
-  const role = document.getElementById('uRole').value;
-  const phone = document.getElementById('uPhone').value.trim() || null;
-  const msg = document.getElementById('userMoMsg');
-
-  if (!first || !last || !email || !pass) { msg.textContent = 'Popunite sva obavezna polja!'; return; }
-  if (pass.length < 6) { msg.textContent = 'Lozinka mora imati min. 6 karaktera!'; return; }
-
-  msg.textContent = 'Kreiram nalog...';
-
-  // Create auth user
-  const { data: authData, error } = await sb.auth.admin ? 
-    { data: null, error: { message: 'Admin API nije dostupan' } } :
-    await sb.auth.signUp({ email, password: pass });
-
-  if (error) { msg.textContent = 'Greška: ' + error.message; return; }
-
-  const userId = authData?.user?.id;
-  if (!userId) { msg.textContent = 'Greška pri kreiranju naloga.'; return; }
-
-  // Create profile
-  await dbInsert('user_profiles', {
-    id: userId,
-    first_name: first,
-    last_name: last,
-    role,
-    phone,
-    school_id: currentSchoolId || null
-  });
-
-  // Create username
-  const username = await getUniqueUsername(first, last);
-  await dbInsert('usernames', { user_id: userId, username });
-
+  const first=document.getElementById('uFirst').value.trim(),last=document.getElementById('uLast').value.trim();
+  const email=document.getElementById('uEmail').value.trim(),pass=document.getElementById('uPass').value;
+  const role=document.getElementById('uRole').value,phone=document.getElementById('uPhone').value.trim()||null;
+  const msg=document.getElementById('userMoMsg');
+  if(!first||!last||!email||!pass){msg.textContent='Popunite sva polja!';return;}
+  if(pass.length<6){msg.textContent='Lozinka min. 6 karaktera!';return;}
+  msg.textContent='Kreiram...';
+  const{data:authData,error}=await sb.auth.signUp({email,password:pass});
+  if(error){msg.textContent='Greška: '+error.message;return;}
+  const userId=authData?.user?.id;
+  if(!userId){msg.textContent='Greška.';return;}
+  await dbInsert('user_profiles',{id:userId,first_name:first,last_name:last,role,phone,school_id:currentSchoolId||null});
+  const username=await getUniqueUsername(first,last);
+  await dbInsert('usernames',{user_id:userId,username,email});
   closeMo('userMo');
-  users = await dbFetch('user_profiles', 'select=*,schools(name)&order=last_name');
+  users=await dbFetch('user_profiles','select=*,schools(name)&order=last_name');
   usersPage();
 }
 
 async function deleteUser(id) {
-  if (!confirm('Obrisati korisnika?')) return;
-  await dbDelete('user_profiles', id);
-  users = await dbFetch('user_profiles', 'select=*,schools(name)&order=last_name');
+  if(!confirm('Obrisati korisnika?'))return;
+  await dbDelete('user_profiles',id);
+  users=await dbFetch('user_profiles','select=*,schools(name)&order=last_name');
   usersPage();
 }
 
 // ===== YEARS =====
 function yearsPage() {
-  if (!currentSchoolId) { document.getElementById('pageContent').innerHTML = '<div class="empty">Izaberi školu.</div>'; return; }
-  document.getElementById('pageContent').innerHTML = `
+  if(!currentSchoolId){document.getElementById('pageContent').innerHTML='<div class="empty">Izaberi školu.</div>';return;}
+  document.getElementById('pageContent').innerHTML=`
     <div class="page-title">Školske godine</div>
     <div class="card">
-      <div class="card-header">
-        <h2>📅 Školske godine</h2>
-        <button class="btn btn-blue btn-sm" onclick="openMo('yearMo')">+ Dodaj godinu</button>
-      </div>
+      <div class="card-header"><h2>📅 Školske godine</h2><button class="btn btn-blue btn-sm" onclick="openMo('yearMo')">+ Dodaj</button></div>
       <div class="card-body" style="padding:0">
-        ${!years.length ? '<div class="empty">Nema školskih godina.</div>' : `
+        ${!years.length?'<div class="empty">Nema godina.</div>':`
         <div class="table-wrap"><table>
           <thead><tr><th>Naziv</th><th>Početak</th><th>Kraj</th><th>Status</th><th></th></tr></thead>
-          <tbody>${years.map(y => `<tr>
+          <tbody>${years.map(y=>`<tr>
             <td><strong>${esc(y.name)}</strong></td>
-            <td>${fmt(y.start_date)}</td>
-            <td>${fmt(y.end_date)}</td>
-            <td>${y.is_active ? '<span class="badge badge-green">Aktivna</span>' : '<span class="badge badge-gray">Neaktivna</span>'}</td>
+            <td>${fmt(y.start_date)}</td><td>${fmt(y.end_date)}</td>
+            <td>${y.is_active?'<span class="badge badge-green">Aktivna</span>':'<span class="badge badge-gray">Neaktivna</span>'}</td>
             <td style="display:flex;gap:6px">
-              ${!y.is_active ? `<button class="btn btn-outline btn-sm" onclick="activateYear('${y.id}')">Aktiviraj</button>` : ''}
+              ${!y.is_active?`<button class="btn btn-outline btn-sm" onclick="activateYear('${y.id}')">Aktiviraj</button>`:''}
               <button class="btn btn-danger btn-sm" onclick="deleteYear('${y.id}')">Obriši</button>
             </td>
           </tr>`).join('')}</tbody>
         </table></div>`}
       </div>
-    </div>
-  `;
+    </div>`;
 }
 
 async function saveYear() {
-  const name = document.getElementById('yrName').value.trim();
-  const start = document.getElementById('yrStart').value;
-  const end = document.getElementById('yrEnd').value;
-  if (!name || !start || !end) return alert('Popunite sva polja!');
-  await dbInsert('school_years2', { school_id: currentSchoolId, name, start_date: start, end_date: end, is_active: false });
+  const name=document.getElementById('yrName').value.trim(),start=document.getElementById('yrStart').value,end=document.getElementById('yrEnd').value;
+  if(!name||!start||!end)return alert('Popunite sva polja!');
+  await dbInsert('school_years2',{school_id:currentSchoolId,name,start_date:start,end_date:end,is_active:false});
   closeMo('yearMo');
-  years = await dbFetch('school_years2', `select=*&school_id=eq.${currentSchoolId}&order=start_date.desc`);
+  years=await dbFetch('school_years2',`select=*&school_id=eq.${currentSchoolId}&order=start_date.desc`);
   yearsPage();
 }
 
 async function activateYear(id) {
-  const token = JSON.parse(localStorage.getItem('sb-uygjcopyohzslvrzvrmv-auth-token'))?.access_token;
-  await fetch(`${SB_URL}/rest/v1/school_years2?school_id=eq.${currentSchoolId}`, {
-    method: 'PATCH',
-    headers: { 'apikey': SB_KEY, 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
-    body: JSON.stringify({ is_active: false })
-  });
-  await dbUpdate('school_years2', id, { is_active: true });
-  years = await dbFetch('school_years2', `select=*&school_id=eq.${currentSchoolId}&order=start_date.desc`);
+  const token=await getToken();
+  await fetch(`${SB_URL}/rest/v1/school_years2?school_id=eq.${currentSchoolId}`,{method:'PATCH',headers:{'apikey':SB_KEY,'Authorization':'Bearer '+token,'Content-Type':'application/json'},body:JSON.stringify({is_active:false})});
+  await dbUpdate('school_years2',id,{is_active:true});
+  years=await dbFetch('school_years2',`select=*&school_id=eq.${currentSchoolId}&order=start_date.desc`);
   yearsPage();
 }
 
 async function deleteYear(id) {
-  if (!confirm('Obrisati školsku godinu?')) return;
-  await dbDelete('school_years2', id);
-  years = await dbFetch('school_years2', `select=*&school_id=eq.${currentSchoolId}&order=start_date.desc`);
+  if(!confirm('Obrisati godinu?'))return;
+  await dbDelete('school_years2',id);
+  years=await dbFetch('school_years2',`select=*&school_id=eq.${currentSchoolId}&order=start_date.desc`);
   yearsPage();
 }
 
 // ===== CLASSES =====
 function classesPage() {
-  if (!currentSchoolId) { document.getElementById('pageContent').innerHTML = '<div class="empty">Izaberi školu.</div>'; return; }
-  document.getElementById('pageContent').innerHTML = `
+  if(!currentSchoolId){document.getElementById('pageContent').innerHTML='<div class="empty">Izaberi školu.</div>';return;}
+  
+  // Group by grade
+  const byGrade = {};
+  classes.forEach(c => {
+    if(!byGrade[c.grade])byGrade[c.grade]=[];
+    byGrade[c.grade].push(c);
+  });
+
+  document.getElementById('pageContent').innerHTML=`
     <div class="page-title">Odeljenja</div>
-    <div class="card">
-      <div class="card-header">
-        <h2>🎓 Odeljenja</h2>
-        <button class="btn btn-blue btn-sm" onclick="openClassModal()">+ Dodaj odeljenje</button>
-      </div>
-      <div class="card-body" style="padding:0">
-        ${!classes.length ? '<div class="empty">Nema odeljenja.</div>' : `
-        <div class="table-wrap"><table>
-          <thead><tr><th>Naziv</th><th>Razred</th><th>Razredni starešina</th><th></th></tr></thead>
-          <tbody>${classes.map(c => `<tr>
-            <td><strong>${esc(c.name)}</strong></td>
-            <td>${c.grade}. razred</td>
-            <td>${c.user_profiles ? esc(c.user_profiles.first_name + ' ' + c.user_profiles.last_name) : '—'}</td>
-            <td><button class="btn btn-danger btn-sm" onclick="deleteClass('${c.id}')">Obriši</button></td>
-          </tr>`).join('')}</tbody>
-        </table></div>`}
-      </div>
+    <div style="display:flex;justify-content:flex-end;margin-bottom:16px">
+      <button class="btn btn-blue" onclick="openClassModal()">+ Dodaj odeljenje</button>
     </div>
+    ${!classes.length?'<div class="card"><div class="card-body"><div class="empty">Nema odeljenja. Dodaj prvo odeljenje!</div></div></div>':
+    Object.keys(byGrade).sort((a,b)=>a-b).map(grade=>`
+      <div style="margin-bottom:8px;font-size:.72rem;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.08em">${GRADE_LABELS[grade]} razred</div>
+      ${byGrade[grade].map(c=>`
+        <div class="class-card" onclick="showClassDetail('${c.id}')">
+          <div class="class-badge" style="background:${GRADE_COLORS[c.grade]}22;color:${GRADE_COLORS[c.grade]}">
+            ${GRADE_LABELS[c.grade]}${c.section}
+          </div>
+          <div class="class-info">
+            <div class="class-name">${GRADE_LABELS[c.grade]}-${c.section} odeljenje</div>
+            <div class="class-meta">
+              ${c.user_profiles?`Razredni: ${esc(c.user_profiles.first_name)} ${esc(c.user_profiles.last_name)}`:'Bez razrednog starešine'}
+            </div>
+          </div>
+          <div class="class-actions" onclick="event.stopPropagation()">
+            <button class="btn btn-danger btn-sm" onclick="deleteClass('${c.id}')">Obriši</button>
+          </div>
+        </div>`).join('')}
+    `).join('')}
   `;
 }
 
 async function openClassModal() {
-  const staresine = users.filter(u => u.role === 'staresina' || u.role === 'nastavnik');
-  document.getElementById('clStaresina').innerHTML = '<option value="">— Izaberi —</option>' +
-    staresine.map(u => `<option value="${u.id}">${esc(u.first_name)} ${esc(u.last_name)}</option>`).join('');
+  const staresine = users.filter(u=>u.role==='nastavnik'||u.role==='admin');
+  document.getElementById('clStaresina').innerHTML='<option value="">— Izaberi —</option>'+
+    staresine.map(u=>`<option value="${u.id}">${esc(u.first_name)} ${esc(u.last_name)}</option>`).join('');
   openMo('classMo');
 }
 
 async function saveClass() {
-  const name = document.getElementById('clName').value.trim();
-  const grade = parseInt(document.getElementById('clGrade').value);
-  const staresina_id = document.getElementById('clStaresina').value || null;
-  if (!name) return alert('Unesite naziv odeljenja!');
-  if (!currentYearId) return alert('Izaberi školsku godinu!');
-  await dbInsert('classes', { school_id: currentSchoolId, school_year_id: currentYearId, name, grade, staresina_id });
+  const grade=parseInt(document.getElementById('clGrade').value);
+  const section=document.getElementById('clSection').value;
+  const staresina_id=document.getElementById('clStaresina').value||null;
+  const name=`${GRADE_LABELS[grade]}-${section}`;
+  if(!currentYearId)return alert('Izaberi školsku godinu!');
+  await dbInsert('classes',{school_id:currentSchoolId,school_year_id:currentYearId,name,grade,section,staresina_id});
   closeMo('classMo');
-  classes = await dbFetch('classes', `select=*,user_profiles(first_name,last_name)&school_id=eq.${currentSchoolId}&order=grade`);
+  await reloadClasses();
   classesPage();
 }
 
 async function deleteClass(id) {
-  if (!confirm('Obrisati odeljenje?')) return;
-  await dbDelete('classes', id);
-  classes = await dbFetch('classes', `select=*,user_profiles(first_name,last_name)&school_id=eq.${currentSchoolId}&order=grade`);
+  if(!confirm('Obrisati odeljenje?'))return;
+  await dbDelete('classes',id);
+  await reloadClasses();
   classesPage();
 }
 
-// ===== SUBJECTS =====
-function subjectsPage() {
-  if (!currentSchoolId) { document.getElementById('pageContent').innerHTML = '<div class="empty">Izaberi školu.</div>'; return; }
-  document.getElementById('pageContent').innerHTML = `
-    <div class="page-title">Predmeti</div>
-    <div class="card">
-      <div class="card-header">
-        <h2>📖 Predmeti</h2>
-        <button class="btn btn-blue btn-sm" onclick="openMo('subjectMo')">+ Dodaj predmet</button>
-      </div>
-      <div class="card-body" style="padding:0">
-        ${!subjects.length ? '<div class="empty">Nema predmeta.</div>' : `
-        <div class="table-wrap"><table>
-          <thead><tr><th>Naziv</th><th>Vrsta</th><th></th></tr></thead>
-          <tbody>${subjects.map(s => `<tr>
-            <td><strong>${esc(s.name)}</strong></td>
-            <td><span class="badge badge-blue">${esc(SUBJECT_TYPE_LABELS[s.type] || s.type)}</span></td>
-            <td><button class="btn btn-danger btn-sm" onclick="deleteSubject('${s.id}')">Obriši</button></td>
-          </tr>`).join('')}</tbody>
-        </table></div>`}
+// ===== CLASS DETAIL =====
+let currentClassData = null;
+let currentTab = 'predmeti';
+
+async function showClassDetail(classId) {
+  currentClassId = classId;
+  currentClassData = classes.find(c=>c.id===classId);
+  if(!currentClassData)return;
+  
+  const c = currentClassData;
+  document.getElementById('pageContent').innerHTML=`
+    <div class="detail-header">
+      <button class="back-btn" onclick="classesPage()">← Nazad</button>
+      <div>
+        <div class="detail-title">${GRADE_LABELS[c.grade]}-${c.section} odeljenje</div>
+        <div class="detail-sub">${c.user_profiles?`Razredni starešina: ${esc(c.user_profiles.first_name)} ${esc(c.user_profiles.last_name)}`:'Bez razrednog starešine'}</div>
       </div>
     </div>
+    <div class="tabs">
+      <button class="tab-btn active" onclick="switchTab('predmeti',this)">📖 Predmeti i nastavnici</button>
+      <button class="tab-btn" onclick="switchTab('ucenici',this)">👨‍🎓 Učenici</button>
+      <button class="tab-btn" onclick="switchTab('prisustvo',this)">✅ Prisustvo</button>
+    </div>
+    <div id="tabContent"></div>
   `;
+  switchTab('predmeti');
 }
 
-async function saveSubject() {
-  const name = document.getElementById('sjName').value.trim();
-  const type = document.getElementById('sjType').value;
-  if (!name) return alert('Unesite naziv predmeta!');
-  await dbInsert('school_subjects', { school_id: currentSchoolId, name, type });
-  closeMo('subjectMo');
-  subjects = await dbFetch('school_subjects', `select=*&school_id=eq.${currentSchoolId}&order=name`);
-  subjectsPage();
+function switchTab(tab, btn) {
+  currentTab = tab;
+  document.querySelectorAll('.tab-btn').forEach(b=>b.classList.toggle('active',b===btn));
+  if(tab==='predmeti') renderPredmetiTab();
+  else if(tab==='ucenici') renderUceniciTab();
+  else if(tab==='prisustvo') renderPrisustvoTab();
 }
 
-async function deleteSubject(id) {
-  if (!confirm('Obrisati predmet?')) return;
-  await dbDelete('school_subjects', id);
-  subjects = await dbFetch('school_subjects', `select=*&school_id=eq.${currentSchoolId}&order=name`);
-  subjectsPage();
-}
-
-// ===== ASSIGNMENTS =====
-function assignmentsPage() {
-  if (!currentSchoolId) { document.getElementById('pageContent').innerHTML = '<div class="empty">Izaberi školu.</div>'; return; }
-  document.getElementById('pageContent').innerHTML = `
-    <div class="page-title">Dodela nastavnika</div>
+function renderPredmetiTab() {
+  const classAssignments = assignments.filter(a=>a.class_id===currentClassId);
+  document.getElementById('tabContent').innerHTML=`
     <div class="card">
       <div class="card-header">
-        <h2>👨‍🏫 Nastavnici po predmetima</h2>
+        <h2>📖 Predmeti i nastavnici</h2>
         <button class="btn btn-blue btn-sm" onclick="openAssignModal()">+ Dodeli nastavnika</button>
       </div>
       <div class="card-body" style="padding:0">
-        ${!assignments.length ? '<div class="empty">Nema dodela.</div>' : `
+        ${!classAssignments.length?'<div class="empty">Nema dodeljenih predmeta.</div>':`
         <div class="table-wrap"><table>
-          <thead><tr><th>Odeljenje</th><th>Predmet</th><th>Nastavnik</th><th>Od</th><th>Do</th><th></th></tr></thead>
-          <tbody>${assignments.map(a => `<tr>
-            <td>${esc(a.classes?.name || '—')}</td>
-            <td>${esc(a.school_subjects?.name || '—')}</td>
-            <td>${a.user_profiles ? esc(a.user_profiles.first_name + ' ' + a.user_profiles.last_name) : '—'}</td>
-            <td>${fmt(a.date_from)}</td>
-            <td>${fmt(a.date_to)}</td>
+          <thead><tr><th>Predmet</th><th>Vrsta</th><th>Nastavnik</th><th>Od</th><th>Do</th><th></th></tr></thead>
+          <tbody>${classAssignments.map(a=>`<tr>
+            <td><strong>${esc(a.school_subjects?.name||'—')}</strong></td>
+            <td><span class="badge badge-blue" style="font-size:.65rem">${esc(SUBJECT_TYPE_LABELS[a.school_subjects?.type]||'—')}</span></td>
+            <td>${a.user_profiles?esc(a.user_profiles.first_name+' '+a.user_profiles.last_name):'—'}</td>
+            <td>${fmt(a.date_from)}</td><td>${fmt(a.date_to)}</td>
             <td><button class="btn btn-danger btn-sm" onclick="deleteAssignment('${a.id}')">Obriši</button></td>
           </tr>`).join('')}</tbody>
         </table></div>`}
       </div>
-    </div>
-  `;
+    </div>`;
 }
 
-async function openAssignModal() {
-  document.getElementById('asClass').innerHTML = '<option value="">— Izaberi —</option>' +
-    classes.map(c => `<option value="${c.id}">${esc(c.name)}</option>`).join('');
-  document.getElementById('asSubject').innerHTML = '<option value="">— Izaberi —</option>' +
-    subjects.map(s => `<option value="${s.id}">${esc(s.name)}</option>`).join('');
-  const teachers = users.filter(u => u.role === 'nastavnik' || u.role === 'staresina');
-  document.getElementById('asTeacher').innerHTML = '<option value="">— Izaberi —</option>' +
-    teachers.map(u => `<option value="${u.id}">${esc(u.first_name)} ${esc(u.last_name)}</option>`).join('');
+async function renderUceniciTab() {
+  const students = await dbFetch('class_students',`select=*,user_profiles(id,first_name,last_name,phone)&class_id=eq.${currentClassId}`);
+  document.getElementById('tabContent').innerHTML=`
+    <div class="card">
+      <div class="card-header">
+        <h2>👨‍🎓 Učenici (${students.length})</h2>
+        <button class="btn btn-blue btn-sm" onclick="openMo('studentMo');previewStudentUsername()">+ Dodaj učenika</button>
+      </div>
+      <div class="card-body" style="padding:0">
+        ${!students.length?'<div class="empty">Nema učenika.</div>':`
+        <div class="table-wrap"><table>
+          <thead><tr><th>#</th><th>Ime i prezime</th><th>Telefon roditelja</th><th></th></tr></thead>
+          <tbody>${students.map((s,i)=>`<tr>
+            <td style="color:var(--muted)">${i+1}.</td>
+            <td><strong>${esc(s.user_profiles?.first_name||'')} ${esc(s.user_profiles?.last_name||'')}</strong></td>
+            <td>${esc(s.user_profiles?.phone||'—')}</td>
+            <td><button class="btn btn-danger btn-sm" onclick="removeStudent('${s.id}')">Ukloni</button></td>
+          </tr>`).join('')}</tbody>
+        </table></div>`}
+      </div>
+    </div>`;
+}
+
+async function renderPrisustvoTab() {
+  // Get assignments that require attendance (dopunski, dodatni, sekcija, slobodna)
+  const attendanceTypes = ['dopunski','dodatni','sekcija','slobodna','pripremni'];
+  const classAssignments = assignments.filter(a=>a.class_id===currentClassId&&attendanceTypes.includes(a.school_subjects?.type));
+  const students = await dbFetch('class_students',`select=*,user_profiles(id,first_name,last_name)&class_id=eq.${currentClassId}`);
+  
+  if(!classAssignments.length){
+    document.getElementById('tabContent').innerHTML='<div class="card"><div class="card-body"><div class="empty">Nema predmeta koji zahtevaju evidenciju prisustva (dopunski, dodatni, sekcija...).</div></div></div>';
+    return;
+  }
+
+  let html = '';
+  for(const a of classAssignments) {
+    const attData = await dbFetch('attendance',`select=*&assignment_id=eq.${a.id}&order=date`);
+    const dates = [...new Set(attData.map(x=>x.date))].sort();
+    
+    html += `<div class="card" style="margin-bottom:16px">
+      <div class="card-header">
+        <h2>${esc(a.school_subjects?.name||'—')} <span class="badge badge-blue" style="font-size:.65rem">${esc(SUBJECT_TYPE_LABELS[a.school_subjects?.type]||'')}</span></h2>
+        <button class="btn btn-blue btn-sm" onclick="openAttendanceModal('${a.id}','${esc(a.school_subjects?.name||'')}')">+ Unesi prisustvo</button>
+      </div>
+      <div class="card-body" style="padding:${dates.length?'0':'20px'}">`;
+    
+    if(!dates.length) {
+      html += '<div class="empty">Nema unesenih prisustva.</div>';
+    } else {
+      html += '<div style="overflow-x:auto"><div class="attendance-grid" style="grid-template-columns:180px '+dates.map(()=>'70px').join(' ')+'">';
+      html += '<div class="ag-header">Učenik</div>'+dates.map(d=>`<div class="ag-header" style="text-align:center">${d.slice(5)}</div>`).join('');
+      
+      students.forEach(s => {
+        html += `<div class="ag-name">${esc(s.user_profiles?.first_name||'')} ${esc(s.user_profiles?.last_name||'')}</div>`;
+        dates.forEach(d => {
+          const att = attData.find(x=>x.date===d&&x.student_id===s.user_profiles?.id);
+          const icon = att?.status==='prisutan'?'<span class="ag-p">✓</span>':att?.status==='odsutan'?'<span class="ag-o">✗</span>':att?.status==='opravdan'?'<span class="ag-op">○</span>':'<span class="ag-empty">·</span>';
+          html += `<div class="ag-cell" title="${att?.status||'nije uneto'}">${icon}</div>`;
+        });
+      });
+      html += '</div></div>';
+    }
+    html += '</div></div>';
+  }
+  document.getElementById('tabContent').innerHTML = html;
+}
+
+// Attendance modal
+let currentAssignmentId = null;
+async function openAttendanceModal(assignmentId, subjName) {
+  currentAssignmentId = assignmentId;
+  document.getElementById('attendMoT').textContent = `Prisustvo — ${subjName}`;
+  document.getElementById('attendDate').value = new Date().toISOString().slice(0,10);
+  const students = await dbFetch('class_students',`select=*,user_profiles(id,first_name,last_name)&class_id=eq.${currentClassId}`);
+  document.getElementById('attendList').innerHTML = students.map(s=>`
+    <div style="display:flex;align-items:center;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--border)">
+      <span style="font-size:.85rem">${esc(s.user_profiles?.first_name||'')} ${esc(s.user_profiles?.last_name||'')}</span>
+      <select data-student="${s.user_profiles?.id}" style="background:var(--surface2);border:1px solid var(--border);border-radius:6px;padding:4px 8px;font-size:.78rem;outline:none">
+        <option value="prisutan">✓ Prisutan</option>
+        <option value="odsutan">✗ Odsutan</option>
+        <option value="opravdan">○ Opravdan</option>
+      </select>
+    </div>`).join('');
+  openMo('attendMo');
+}
+
+async function saveAttendance() {
+  const date = document.getElementById('attendDate').value;
+  if(!date) return alert('Izaberi datum!');
+  const selects = document.querySelectorAll('#attendList select');
+  const records = [];
+  selects.forEach(sel => {
+    records.push({ assignment_id: currentAssignmentId, class_id: currentClassId, student_id: sel.dataset.student, date, status: sel.value });
+  });
+  // Delete existing for this date+assignment then insert
+  const token = await getToken();
+  await fetch(`${SB_URL}/rest/v1/attendance?assignment_id=eq.${currentAssignmentId}&date=eq.${date}`,{method:'DELETE',headers:{'apikey':SB_KEY,'Authorization':'Bearer '+token}});
+  for(const r of records) await dbInsert('attendance', r);
+  closeMo('attendMo');
+  renderPrisustvoTab();
+}
+
+// ===== SUBJECTS =====
+function subjectsPage() {
+  if(!currentSchoolId){document.getElementById('pageContent').innerHTML='<div class="empty">Izaberi školu.</div>';return;}
+  document.getElementById('pageContent').innerHTML=`
+    <div class="page-title">Predmeti</div>
+    <div class="card">
+      <div class="card-header"><h2>📖 Predmeti škole</h2><button class="btn btn-blue btn-sm" onclick="openMo('subjectMo')">+ Dodaj predmet</button></div>
+      <div class="card-body" style="padding:0">
+        ${!subjects.length?'<div class="empty">Nema predmeta.</div>':`
+        <div class="table-wrap"><table>
+          <thead><tr><th>Naziv</th><th>Vrsta</th><th></th></tr></thead>
+          <tbody>${subjects.map(s=>`<tr>
+            <td><strong>${esc(s.name)}</strong></td>
+            <td><span class="badge badge-blue">${esc(SUBJECT_TYPE_LABELS[s.type]||s.type)}</span></td>
+            <td><button class="btn btn-danger btn-sm" onclick="deleteSubject('${s.id}')">Obriši</button></td>
+          </tr>`).join('')}</tbody>
+        </table></div>`}
+      </div>
+    </div>`;
+}
+
+async function saveSubject() {
+  const name=document.getElementById('sjName').value.trim(),type=document.getElementById('sjType').value;
+  if(!name)return alert('Unesite naziv!');
+  await dbInsert('school_subjects',{school_id:currentSchoolId,name,type});
+  closeMo('subjectMo');
+  subjects=await dbFetch('school_subjects',`select=*&school_id=eq.${currentSchoolId}&order=name`);
+  subjectsPage();
+}
+
+async function deleteSubject(id) {
+  if(!confirm('Obrisati predmet?'))return;
+  await dbDelete('school_subjects',id);
+  subjects=await dbFetch('school_subjects',`select=*&school_id=eq.${currentSchoolId}&order=name`);
+  subjectsPage();
+}
+
+// ===== ASSIGN =====
+function openAssignModal() {
+  document.getElementById('asSubject').innerHTML='<option value="">— Izaberi —</option>'+subjects.map(s=>`<option value="${s.id}">${esc(s.name)}</option>`).join('');
+  const teachers=users.filter(u=>u.role==='nastavnik'||u.role==='admin');
+  document.getElementById('asTeacher').innerHTML='<option value="">— Izaberi —</option>'+teachers.map(u=>`<option value="${u.id}">${esc(u.first_name)} ${esc(u.last_name)}</option>`).join('');
   openMo('assignMo');
 }
 
 async function saveAssignment() {
-  const class_id = document.getElementById('asClass').value;
-  const subject_id = document.getElementById('asSubject').value;
-  const teacher_id = document.getElementById('asTeacher').value;
-  const date_from = document.getElementById('asFrom').value;
-  const date_to = document.getElementById('asTo').value;
-  if (!class_id || !subject_id || !teacher_id || !date_from || !date_to) return alert('Popunite sva polja!');
-  await dbInsert('subject_assignments', { class_id, subject_id, teacher_id, date_from, date_to });
+  const subject_id=document.getElementById('asSubject').value,teacher_id=document.getElementById('asTeacher').value;
+  const date_from=document.getElementById('asFrom').value,date_to=document.getElementById('asTo').value;
+  if(!subject_id||!teacher_id||!date_from||!date_to)return alert('Popunite sva polja!');
+  await dbInsert('subject_assignments',{class_id:currentClassId,subject_id,teacher_id,date_from,date_to});
   closeMo('assignMo');
-  assignments = await dbFetch('subject_assignments', `select=*,classes(name),school_subjects(name),user_profiles(first_name,last_name)&class_id=in.(${classes.map(c=>c.id).join(',') || 'null'})`);
-  assignmentsPage();
+  await reloadClasses();
+  renderPredmetiTab();
 }
 
 async function deleteAssignment(id) {
-  if (!confirm('Obrisati dodelu?')) return;
-  await dbDelete('subject_assignments', id);
-  assignments = await dbFetch('subject_assignments', `select=*,classes(name),school_subjects(name),user_profiles(first_name,last_name)&class_id=in.(${classes.map(c=>c.id).join(',') || 'null'})`);
-  assignmentsPage();
+  if(!confirm('Obrisati dodelu?'))return;
+  await dbDelete('subject_assignments',id);
+  await reloadClasses();
+  renderPredmetiTab();
+}
+
+// ===== STUDENTS =====
+async function previewStudentUsername() {
+  const first=document.getElementById('stFirst').value.trim(),last=document.getElementById('stLast').value.trim();
+  if(first&&last) document.getElementById('stUsername').value=await getUniqueUsername(first,last);
+}
+
+async function saveStudent() {
+  const first=document.getElementById('stFirst').value.trim(),last=document.getElementById('stLast').value.trim();
+  const email=document.getElementById('stEmail').value.trim(),pass=document.getElementById('stPass').value;
+  const phone=document.getElementById('stPhone').value.trim()||null;
+  const msg=document.getElementById('studentMoMsg');
+  if(!first||!last||!email||!pass){msg.textContent='Popunite sva polja!';return;}
+  if(pass.length<6){msg.textContent='Lozinka min. 6 karaktera!';return;}
+  msg.textContent='Kreiram...';
+  const{data:authData,error}=await sb.auth.signUp({email,password:pass});
+  if(error){msg.textContent='Greška: '+error.message;return;}
+  const userId=authData?.user?.id;
+  if(!userId){msg.textContent='Greška.';return;}
+  await dbInsert('user_profiles',{id:userId,first_name:first,last_name:last,role:'ucenik',phone,school_id:currentSchoolId||null});
+  const username=await getUniqueUsername(first,last);
+  await dbInsert('usernames',{user_id:userId,username,email});
+  await dbInsert('class_students',{class_id:currentClassId,student_id:userId});
+  closeMo('studentMo');
+  users=await dbFetch('user_profiles','select=*,schools(name)&order=last_name');
+  renderUceniciTab();
+}
+
+async function removeStudent(id) {
+  if(!confirm('Ukloniti učenika?'))return;
+  await dbDelete('class_students',id);
+  renderUceniciTab();
 }
 </script>
 </body>
