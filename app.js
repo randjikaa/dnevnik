@@ -7,7 +7,9 @@ let currentProfile = null;
 
 // ===== AUTH =====
 async function getSession() {
-  const stored = localStorage.getItem('sb-uygjcopyohzslvrzvrmv-auth-token');
+  // Use dynamic storage key based on project URL
+  const storageKey = `sb-${SB_URL.replace('https://','').split('.')[0]}-auth-token`;
+  const stored = localStorage.getItem(storageKey);
   if (!stored) return null;
   try {
     const parsed = JSON.parse(stored);
